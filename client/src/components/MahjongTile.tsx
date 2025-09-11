@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface MahjongTileProps {
   id: number;
@@ -7,6 +7,10 @@ interface MahjongTileProps {
   onClick: () => void;
   disabled: boolean;
   isShuffling?: boolean;
+  phase?: "initial" | "flying-in" | "showing-front" | "flipping-back" | "shuffling" | "ready" | "revealing" | "revealed";
+  frontImage?: string;
+  backImage?: string;
+  animationDelay?: number;
 }
 
 const MahjongTile = ({
@@ -16,57 +20,121 @@ const MahjongTile = ({
   onClick,
   disabled,
   isShuffling = false,
+  phase = "ready",
+  frontImage,
+  backImage,
+  animationDelay = 0,
 }: MahjongTileProps) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [currentPhase, setCurrentPhase] = useState(phase);
+  const [shuffleOffset, setShuffleOffset] = useState({ x: 0, rotation: 0 });
+  
+  // 默认图片
+  const defaultBackImage = "/attached_assets/generated_images/麻将牌背面图案_324a01cc.png";
+  const defaultWinnerImage = "/attached_assets/generated_images/红中麻将牌正面_8a7f2e08.png";
+  const defaultLoserImage = "/attached_assets/generated_images/白板麻将牌正面_0905cb27.png";
+  
+  const actualBackImage = backImage || defaultBackImage;
+  const actualFrontImage = frontImage || (isWinner ? defaultWinnerImage : defaultLoserImage);
+  
+  useEffect(() => {
+    setCurrentPhase(phase);
+  }, [phase, id]);
+  
+  // 洗牌动画效果（简化为只使用CSS动画，避免重复变换）
+  useEffect(() => {
+    if (isShuffling) {
+      // 不再使用JavaScript随机偏移，完全依赖CSS动画
+      // 这避免了transform层叠问题
+    }
+  }, [isShuffling]);
+  // 获取动画类名
+  const getAnimationClasses = () => {
+    const baseClasses = "relative w-24 h-36 cursor-pointer transform-gpu perspective-1000";
+    
+    switch (currentPhase) {
+      case "initial":
+        return `${baseClasses} tile-initial`;
+      case "flying-in":
+        return `${baseClasses} tile-flying-in`;
+      case "showing-front":
+        return `${baseClasses} transition-all duration-500`;
+      case "flipping-back":
+        return `${baseClasses} transition-all duration-700`;
+      case "shuffling":
+        return `${baseClasses} tile-shuffling`;
+      case "ready":
+        return `${baseClasses} tile-ready ${!disabled ? "" : "pointer-events-none"}`;
+      case "revealing":
+        return `${baseClasses} tile-revealing`;
+      case "revealed":
+        return `${baseClasses} tile-revealed`;
+      default:
+        return baseClasses;
+    }
+  };
+  
+  // 获取卡片变换样式（简化以避免重复变换）
+  const getCardTransform = () => {
+    // 翻转效果（修复方向语义，确保显示正面时真正显示正面）
+    if (currentPhase === "showing-front") {
+      return "rotateY(180deg)";  // 显示正面（前图在180deg侧）
+    } else if (currentPhase === "flipping-back" || currentPhase === "shuffling" || currentPhase === "ready") {
+      return "rotateY(0deg)";    // 显示背面（背图在0deg侧）
+    } else if (isFlipped) {
+      return "rotateY(180deg)";
+    }
+    
+    return "";
+  };
+  
   return (
     <div
-      className={`relative w-20 h-28 cursor-pointer transform-gpu transition-transform duration-300 hover:scale-105 ${
-        isShuffling ? "animate-shuffle" : ""
-      } ${disabled ? "pointer-events-none" : ""}`}
+      ref={cardRef}
+      className={getAnimationClasses()}
       onClick={onClick}
       data-testid={`tile-${id}`}
+      style={{
+        animationDelay: `${animationDelay}ms`
+      }}
     >
       <div
-        className={`relative w-full h-full transform-style-preserve-3d transition-transform duration-600 ${
-          isFlipped ? "animate-flip" : ""
-        }`}
-        style={{ transformStyle: "preserve-3d" }}
+        className="relative w-full h-full transition-transform duration-700 preserve-3d"
+        style={{ 
+          transformStyle: "preserve-3d",
+          transform: getCardTransform()
+        }}
       >
         {/* 背面 */}
         <div
-          className="absolute inset-0 w-full h-full rounded-md shadow-lg backface-hidden"
+          className="absolute inset-0 w-full h-full rounded-lg shadow-lg backface-hidden"
           style={{
             backfaceVisibility: "hidden",
-            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+            transform: "rotateY(0deg)",
           }}
         >
           <img
-            src="/attached_assets/generated_images/麻将牌背面图案_324a01cc.png"
+            src={actualBackImage}
             alt="麻将牌背面"
-            className="w-full h-full object-cover rounded-md"
+            className="w-full h-full object-cover rounded-lg"
+            data-testid={`tile-${id}-back`}
           />
         </div>
 
         {/* 正面 */}
         <div
-          className="absolute inset-0 w-full h-full rounded-md shadow-lg backface-hidden"
+          className="absolute inset-0 w-full h-full rounded-lg shadow-lg backface-hidden"
           style={{
             backfaceVisibility: "hidden",
-            transform: isFlipped ? "rotateY(0deg)" : "rotateY(180deg)",
+            transform: "rotateY(180deg)",
           }}
         >
-          {isWinner ? (
-            <img
-              src="/attached_assets/generated_images/红中麻将牌正面_8a7f2e08.png"
-              alt="红中"
-              className="w-full h-full object-cover rounded-md"
-            />
-          ) : (
-            <img
-              src="/attached_assets/generated_images/白板麻将牌正面_0905cb27.png"
-              alt="白板"
-              className="w-full h-full object-cover rounded-md"
-            />
-          )}
+          <img
+            src={actualFrontImage}
+            alt={isWinner ? "红中" : "白板"}
+            className="w-full h-full object-cover rounded-lg"
+            data-testid={`tile-${id}-front`}
+          />
         </div>
       </div>
     </div>

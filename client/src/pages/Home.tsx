@@ -1,5 +1,5 @@
-import LotteryGame from "@/components/LotteryGame";
+import EnhancedMahjongGame from "@/components/EnhancedMahjongGame";
 
 export default function Home() {
-  return <LotteryGame />;
+  return <EnhancedMahjongGame />;
 }
