@@ -125,6 +125,31 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     }
   };
 
+  // 加载统计数据（不更新概率滑块，避免覆盖用户设置）
+  const loadStatsWithoutProbability = async () => {
+    try {
+      const response = await fetch('/api/admin/stats', {
+        headers: {
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
+        }
+      });
+      const data = await response.json();
+      
+      if (data.ok) {
+        setStats({
+          totalParticipants: data.totalParticipants,
+          totalWinners: data.totalWinners,
+          totalBagsGiven: data.totalBagsGiven,
+          winRate: data.winRate,
+          todayStats: data.todayStats
+        });
+        // 注意：这里不调用setWinProbability，避免覆盖用户刚设置的值
+      }
+    } catch (error) {
+      console.error('Failed to load stats without probability:', error);
+    }
+  };
+
   // 加载中奖概率
   const loadWinProbability = async () => {
     // 从stats中获取winRate
@@ -166,8 +191,9 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         throw new Error(data.msg || '保存失败');
       }
       
-      // 重新加载统计数据
-      await loadStats();
+      // 保存成功后，只更新统计数据的其他部分，不重置滑块值
+      // 避免loadStats()中的setWinProbability覆盖用户刚设置的值
+      await loadStatsWithoutProbability();
     } catch (error) {
       console.error('Failed to save probability:', error);
       alert('保存概率失败：' + (error instanceof Error ? error.message : String(error)));

@@ -128,7 +128,13 @@ const EnhancedMahjongGame = () => {
     // 所有牌飞入完成后，显示正面
     const showFrontTimer = setTimeout(() => {
       setGameState(prev => ({ ...prev, phase: "showing-front" }));
-      setTilesConfig(prev => prev.map(t => ({ ...t, phase: "showing-front" })));
+      // 在正面展示阶段，强制中间的牌（id=1）显示红中，给用户提示有机会获得红中
+      setTilesConfig(prev => prev.map(t => ({ 
+        ...t, 
+        phase: "showing-front",
+        // 临时将中间的牌设为winner状态，显示红中
+        isWinner: t.id === 1 ? true : t.isWinner
+      })));
       
       // 显示正面一段时间后开始翻到背面
       const flipBackTimer = setTimeout(() => {
@@ -142,7 +148,13 @@ const EnhancedMahjongGame = () => {
   // 翻到背面
   const startFlipToBack = () => {
     setGameState(prev => ({ ...prev, phase: "flipping-back" }));
-    setTilesConfig(prev => prev.map(t => ({ ...t, phase: "flipping-back" })));
+    // 翻回背面时，恢复所有牌的isWinner状态为false（正面展示结束）
+    setTilesConfig(prev => prev.map(t => ({ 
+      ...t, 
+      phase: "flipping-back",
+      // 恢复所有牌的原始状态，清除正面展示阶段的临时红中提示
+      isWinner: false
+    })));
     
     // 翻转完成后开始洗牌（使用常量并跟踪定时器）
     const flipTimer = setTimeout(() => {
