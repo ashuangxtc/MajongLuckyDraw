@@ -15,13 +15,23 @@ interface GameState {
   hasPlayed: boolean;
 }
 
+interface ActivityStatus {
+  status: "waiting" | "open" | "closed";
+  startAt?: number | null;
+  endAt?: number | null;
+}
+
 const LotteryGame = () => {
   const [gameState, setGameState] = useState<GameState>({
     phase: "waiting",
     selectedTile: null,
     gameResult: null,
-    hasPlayed: localStorage.getItem("mahjong_lottery_played") === "true", //todo: remove mock functionality
+    hasPlayed: false,
   });
+
+  const [activityStatus, setActivityStatus] = useState<ActivityStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
 
   const [tilesState, setTilesState] = useState([
     { id: 0, isFlipped: false, isWinner: false },
@@ -29,8 +39,39 @@ const LotteryGame = () => {
     { id: 2, isFlipped: false, isWinner: false },
   ]);
 
+  // 检查活动状态
+  const checkActivityStatus = async () => {
+    try {
+      const response = await fetch('/api/status');
+      const data = await response.json();
+      
+      if (data.ok) {
+        setActivityStatus({
+          status: data.status,
+          startAt: data.startAt,
+          endAt: data.endAt
+        });
+      } else {
+        setError("无法获取活动状态");
+      }
+    } catch (err) {
+      setError("网络异常，请稍候重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初始化和定期检查状态
+  useEffect(() => {
+    checkActivityStatus();
+    
+    // 每10秒检查一次状态
+    const interval = setInterval(checkActivityStatus, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   const startGame = () => {
-    if (gameState.hasPlayed) return;
+    if (gameState.hasPlayed || activityStatus?.status !== "open") return;
     
     setGameState(prev => ({ ...prev, phase: "shuffling" }));
     
@@ -41,7 +82,7 @@ const LotteryGame = () => {
   };
 
   const selectTile = async (tileId: number) => {
-    if (gameState.phase !== "selecting") return;
+    if (gameState.phase !== "selecting" || activityStatus?.status !== "open") return;
 
     setGameState(prev => ({ 
       ...prev, 
@@ -49,62 +90,149 @@ const LotteryGame = () => {
       selectedTile: tileId 
     }));
 
-    // 模拟API调用 //todo: remove mock functionality
-    const mockResult = {
-      win: Math.random() < 0.1, // 10%概率中奖
-      prize: Math.random() < 0.1 ? "红中" : "白板",
-      code: Math.random() < 0.1 ? `DM-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).substr(2, 4).toUpperCase()}` : undefined
-    };
-
-    // 设置获奖牌的状态
-    const newTilesState = tilesState.map((tile, index) => ({
-      ...tile,
-      isFlipped: index === tileId,
-      isWinner: index === tileId && mockResult.win
-    }));
-
-    setTilesState(newTilesState);
-
-    // 翻牌动画完成后显示结果
-    setTimeout(() => {
-      setGameState(prev => ({ 
-        ...prev, 
-        phase: "finished",
-        gameResult: {
-          isWinner: mockResult.win,
-          prizeCode: mockResult.code,
-          prize: mockResult.prize
+    try {
+      // 调用真实的抽奖API
+      const response = await fetch('/api/draw', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (result.msg === 'already_participated') {
+          setGameState(prev => ({ ...prev, hasPlayed: true, phase: "finished" }));
+          return;
+        } else if (result.msg === 'not_started' || result.msg === 'activity_ended') {
+          // 重新检查活动状态
+          await checkActivityStatus();
+          setGameState(prev => ({ ...prev, phase: "waiting" }));
+          return;
+        }
+        throw new Error(result.msg || "抽奖失败");
+      }
+
+      // 设置获奖牌的状态
+      const newTilesState = tilesState.map((tile, index) => ({
+        ...tile,
+        isFlipped: index === tileId,
+        isWinner: index === tileId && result.win
       }));
 
-      // 标记已玩过
-      localStorage.setItem("mahjong_lottery_played", "true"); //todo: remove mock functionality
-    }, 600);
+      setTilesState(newTilesState);
+
+      // 翻牌动画完成后显示结果
+      setTimeout(() => {
+        setGameState(prev => ({ 
+          ...prev, 
+          phase: "finished",
+          gameResult: {
+            isWinner: result.win,
+            prizeCode: result.code,
+            prize: result.prize === "hongzhong" ? "红中" : "白板"
+          },
+          hasPlayed: true
+        }));
+      }, 600);
+
+    } catch (error) {
+      console.error('Draw error:', error);
+      setError("抽奖失败，请重试");
+      setGameState(prev => ({ ...prev, phase: "waiting" }));
+    }
   };
 
   const closeResult = () => {
     setGameState(prev => ({ 
       ...prev, 
-      gameResult: null,
-      hasPlayed: true
+      gameResult: null
     }));
   };
 
-  const resetGame = () => { //todo: remove mock functionality
-    localStorage.removeItem("mahjong_lottery_played");
-    setGameState({
-      phase: "waiting",
-      selectedTile: null,
-      gameResult: null,
-      hasPlayed: false,
-    });
-    setTilesState([
-      { id: 0, isFlipped: false, isWinner: false },
-      { id: 1, isFlipped: false, isWinner: false },
-      { id: 2, isFlipped: false, isWinner: false },
-    ]);
-  };
+  // 加载中状态
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="py-8">
+            <p className="text-lg">正在加载...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
+  // 错误状态
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle className="text-2xl">系统提示</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-destructive">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              刷新页面
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 活动尚未开始
+  if (activityStatus?.status === "waiting") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle className="text-2xl">抽奖活动</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-4xl mb-4">⏳</div>
+            <p className="text-lg">活动尚未开始，请稍候~</p>
+            <p className="text-sm text-muted-foreground">
+              {activityStatus.startAt 
+                ? `开始时间：${new Date(activityStatus.startAt).toLocaleString('zh-CN')}`
+                : "等待管理员开启活动"
+              }
+            </p>
+            <div className="text-xs text-muted-foreground mt-4">
+              <p>页面将自动刷新状态</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 活动已结束
+  if (activityStatus?.status === "closed") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle className="text-2xl">抽奖活动</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-4xl mb-4">🏁</div>
+            <p className="text-lg">本场活动已结束</p>
+            <p className="text-muted-foreground">感谢大家的参与！</p>
+            {activityStatus.endAt && (
+              <p className="text-sm text-muted-foreground">
+                结束时间：{new Date(activityStatus.endAt).toLocaleString('zh-CN')}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 已参与过的用户
   if (gameState.hasPlayed && gameState.phase === "waiting") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center p-4">
@@ -113,22 +241,13 @@ const LotteryGame = () => {
             <CardTitle className="text-2xl">感谢参与</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="text-4xl mb-4">✅</div>
             <p className="text-muted-foreground">
-              每人仅可参与一次抽奖活动
+              您已参与过本次抽奖活动
             </p>
             <p className="text-sm text-muted-foreground">
-              如需再次体验，请联系管理员
+              每人仅可参与一次
             </p>
-            {/* 开发模式重置按钮 */}
-            <Button 
-              onClick={resetGame} 
-              variant="outline" 
-              size="sm"
-              className="mt-4"
-              data-testid="button-reset-game"
-            >
-              重置游戏 (开发模式)
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -169,7 +288,7 @@ const LotteryGame = () => {
 
             {/* 操作按钮 */}
             <div className="space-y-4">
-              {gameState.phase === "waiting" && (
+              {gameState.phase === "waiting" && activityStatus?.status === "open" && (
                 <Button 
                   onClick={startGame}
                   size="lg"

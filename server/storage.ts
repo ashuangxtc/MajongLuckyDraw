@@ -138,6 +138,7 @@ export class MemStorage implements IStorage {
     const draw: Draw = {
       id,
       ...insertDraw,
+      code: insertDraw.code || null,
       timestamp: Date.now(),
       redeemed: false
     };

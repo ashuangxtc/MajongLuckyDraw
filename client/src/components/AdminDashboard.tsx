@@ -1,60 +1,240 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminStats from "./AdminStats";
 
 interface AdminDashboardProps {
   onLogout: () => void;
 }
 
+interface ActivityState {
+  status: "waiting" | "open" | "closed";
+  startAt?: number | null;
+  endAt?: number | null;
+}
+
 const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const [winProbability, setWinProbability] = useState([10]); // 默认10%
   const [isSaving, setIsSaving] = useState(false);
+  const [activityState, setActivityState] = useState<ActivityState | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isUpdatingWindow, setIsUpdatingWindow] = useState(false);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
 
-  //todo: remove mock functionality
-  const mockStats = {
-    totalParticipants: 1247,
-    totalWinners: 126,
-    totalBagsGiven: 118,
-    winRate: winProbability[0] / 100,
+  const [stats, setStats] = useState({
+    totalParticipants: 0,
+    totalWinners: 0,
+    totalBagsGiven: 0,
+    winRate: 0.1,
     todayStats: {
-      participants: 89,
-      winners: 9,
-      bagsGiven: 8,
+      participants: 0,
+      winners: 0,
+      bagsGiven: 0,
     },
+  });
+
+  const [winnerList, setWinnerList] = useState<any[]>([]);
+
+  // 加载初始数据
+  useEffect(() => {
+    loadActivityStatus();
+    loadStats();
+    loadWinnerList();
+    loadWinProbability();
+  }, []);
+
+  // 加载活动状态
+  const loadActivityStatus = async () => {
+    try {
+      const response = await fetch('/api/status');
+      const data = await response.json();
+      
+      if (data.ok) {
+        setActivityState({
+          status: data.status,
+          startAt: data.startAt,
+          endAt: data.endAt
+        });
+
+        // 设置时间输入框的值
+        if (data.startAt) {
+          setStartTime(new Date(data.startAt).toISOString().slice(0, 16));
+        }
+        if (data.endAt) {
+          setEndTime(new Date(data.endAt).toISOString().slice(0, 16));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load activity status:', error);
+    }
   };
 
-  const mockWinnerList = [
-    { id: 1, timestamp: "2024-12-11 14:30:25", code: "DM-20241211-A8F2", ip: "192.168.1.100", userAgent: "Mozilla/5.0..." },
-    { id: 2, timestamp: "2024-12-11 13:15:10", code: "DM-20241211-B7G3", ip: "192.168.1.105", userAgent: "Mozilla/5.0..." },
-    { id: 3, timestamp: "2024-12-11 11:45:33", code: "DM-20241211-C6H4", ip: "192.168.1.112", userAgent: "Mozilla/5.0..." },
-    { id: 4, timestamp: "2024-12-11 10:20:15", code: "DM-20241211-D5I5", ip: "192.168.1.120", userAgent: "Mozilla/5.0..." },
-    { id: 5, timestamp: "2024-12-11 09:30:48", code: "DM-20241211-E4J6", ip: "192.168.1.115", userAgent: "Mozilla/5.0..." },
-  ];
+  // 加载统计数据
+  const loadStats = async () => {
+    try {
+      const response = await fetch('/api/admin/stats', {
+        headers: {
+          'x-admin-password': 'admin123'
+        }
+      });
+      const data = await response.json();
+      
+      if (data.ok) {
+        setStats({
+          totalParticipants: data.totalParticipants,
+          totalWinners: data.totalWinners,
+          totalBagsGiven: data.totalBagsGiven,
+          winRate: data.winRate,
+          todayStats: data.todayStats
+        });
+        
+        // 同时更新中奖概率滑块的值
+        setWinProbability([Math.round(data.winRate * 100)]);
+      }
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+    }
+  };
 
+  // 加载中奖名单
+  const loadWinnerList = async () => {
+    try {
+      // 这里应该有一个专门的API端点来获取中奖名单
+      // 暂时使用空数组，实际项目中需要添加对应的API
+      setWinnerList([]);
+    } catch (error) {
+      console.error('Failed to load winner list:', error);
+    }
+  };
+
+  // 加载中奖概率
+  const loadWinProbability = async () => {
+    // 从stats中获取winRate
+  };
+
+  // 保存中奖概率
   const handleSaveProbability = async () => {
     setIsSaving(true);
-    console.log("Saving probability:", winProbability[0] + "%"); //todo: remove mock functionality
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 模拟保存延迟
-    setIsSaving(false);
+    try {
+      const response = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': 'admin123'
+        },
+        body: JSON.stringify({ probability: winProbability[0] / 100 })
+      });
+
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.msg || '保存失败');
+      }
+      
+      // 重新加载统计数据
+      await loadStats();
+    } catch (error) {
+      console.error('Failed to save probability:', error);
+      alert('保存概率失败：' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleExportCSV = () => {
-    console.log("Exporting CSV..."); //todo: remove mock functionality
-    // 模拟CSV导出
-    const csvData = mockWinnerList.map(winner => 
-      [winner.timestamp, winner.code, winner.ip, winner.userAgent.substring(0, 50) + "..."].join(",")
-    );
-    const csv = ["时间,兑换码,IP地址,浏览器信息", ...csvData].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `mahjong_lottery_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
+  // 更新活动状态
+  const handleUpdateStatus = async (newStatus: string) => {
+    setIsUpdatingStatus(true);
+    try {
+      const response = await fetch('/api/admin/set-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': 'admin123'
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.msg || '更新失败');
+      }
+
+      // 重新加载活动状态
+      await loadActivityStatus();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      alert('更新状态失败：' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // 更新时间窗口
+  const handleUpdateWindow = async () => {
+    setIsUpdatingWindow(true);
+    try {
+      const startTimestamp = startTime ? new Date(startTime).getTime() : null;
+      const endTimestamp = endTime ? new Date(endTime).getTime() : null;
+
+      const response = await fetch('/api/admin/set-window', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': 'admin123'
+        },
+        body: JSON.stringify({ 
+          startAt: startTimestamp,
+          endAt: endTimestamp
+        })
+      });
+
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.msg || '更新失败');
+      }
+
+      // 重新加载活动状态
+      await loadActivityStatus();
+    } catch (error) {
+      console.error('Failed to update window:', error);
+      alert('更新时间窗口失败：' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsUpdatingWindow(false);
+    }
+  };
+
+  // 导出CSV
+  const handleExportCSV = async () => {
+    try {
+      const response = await fetch('/api/admin/export', {
+        headers: {
+          'x-admin-password': 'admin123'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('导出失败');
+      }
+
+      // 创建下载链接
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `mahjong_lottery_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+      alert('导出数据失败：' + (error instanceof Error ? error.message : String(error)));
+    }
   };
 
   return (
@@ -71,7 +251,87 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
 
       <div className="p-6 space-y-6">
         {/* 统计数据 */}
-        <AdminStats stats={mockStats} />
+        <AdminStats stats={stats} />
+
+        {/* 活动状态控制 */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>活动状态控制</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span>当前状态：</span>
+                <Badge 
+                  variant={
+                    activityState?.status === "open" ? "default" : 
+                    activityState?.status === "waiting" ? "secondary" : "destructive"
+                  }
+                >
+                  {activityState?.status === "open" && "活动进行中"}
+                  {activityState?.status === "waiting" && "等待开始"}
+                  {activityState?.status === "closed" && "已结束"}
+                </Badge>
+              </div>
+              
+              <Select 
+                onValueChange={handleUpdateStatus}
+                disabled={isUpdatingStatus}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="切换状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="waiting">等待开始</SelectItem>
+                  <SelectItem value="open">开始活动</SelectItem>
+                  <SelectItem value="closed">结束活动</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {isUpdatingStatus && (
+                <span className="text-sm text-muted-foreground">更新中...</span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startTime">开始时间（可选）</Label>
+                <Input
+                  id="startTime"
+                  type="datetime-local"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  data-testid="input-start-time"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="endTime">结束时间（可选）</Label>
+                <Input
+                  id="endTime"
+                  type="datetime-local"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  data-testid="input-end-time"
+                />
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleUpdateWindow}
+              disabled={isUpdatingWindow}
+              variant="outline"
+              data-testid="button-update-window"
+            >
+              {isUpdatingWindow ? "更新中..." : "更新时间设置"}
+            </Button>
+
+            <div className="text-xs text-muted-foreground">
+              <p>• 设置时间后，系统将自动在指定时间开始/结束活动</p>
+              <p>• 留空表示仅手动控制状态</p>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 概率配置 */}
@@ -139,7 +399,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
               <div className="border-t pt-4">
                 <h4 className="font-medium text-sm mb-2">最近中奖记录</h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {mockWinnerList.slice(0, 3).map((winner) => (
+                  {winnerList.slice(0, 3).map((winner: any) => (
                     <div key={winner.id} className="text-xs space-y-1 p-2 bg-muted rounded">
                       <div className="flex justify-between">
                         <span className="font-mono">{winner.code}</span>
@@ -173,7 +433,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockWinnerList.map((winner) => (
+                  {winnerList.map((winner: any) => (
                     <tr key={winner.id} className="border-b hover:bg-muted/50">
                       <td className="p-2 font-mono text-xs">{winner.timestamp}</td>
                       <td className="p-2">
