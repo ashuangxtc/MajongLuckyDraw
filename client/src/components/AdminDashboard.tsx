@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import AdminStats from "./AdminStats";
 
 interface AdminDashboardProps {
@@ -90,7 +92,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     try {
       const response = await fetch('/api/admin/stats', {
         headers: {
-          'x-admin-password': 'admin123'
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
         }
       });
       const data = await response.json();
@@ -133,7 +135,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     try {
       const response = await fetch('/api/admin/participants', {
         headers: {
-          'x-admin-password': 'admin123'
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
         }
       });
       const data = await response.json();
@@ -154,7 +156,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-password': 'admin123'
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
         },
         body: JSON.stringify({ probability: winProbability[0] / 100 })
       });
@@ -182,7 +184,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-password': 'admin123'
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
         },
         body: JSON.stringify({ status: newStatus })
       });
@@ -213,7 +215,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-password': 'admin123'
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
         },
         body: JSON.stringify({ 
           startAt: startTimestamp,
@@ -241,7 +243,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     try {
       const response = await fetch('/api/admin/export', {
         headers: {
-          'x-admin-password': 'admin123'
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
         }
       });
 
@@ -274,7 +276,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-password': 'admin123'
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
         },
         body: JSON.stringify({ userKey: userIdentifier })
       });
@@ -309,7 +311,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-password': 'admin123'
+          'x-admin-password': sessionStorage.getItem('admin-token') || ''
         }
       });
 
@@ -455,46 +457,53 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 概率配置 */}
+          {/* 高级设置 - 概率配置 */}
           <Card>
-            <CardHeader>
-              <CardTitle>中奖概率配置</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>红中中奖概率</Label>
-                <div className="px-3">
-                  <Slider
-                    value={winProbability}
-                    onValueChange={setWinProbability}
-                    max={100}
-                    step={1}
+            <Collapsible defaultOpen={false}>
+              <CardHeader>
+                <CollapsibleTrigger className="flex w-full items-center justify-between p-0 hover:no-underline [&[data-state=open]>svg]:rotate-180" data-testid="button-toggle-advanced-settings">
+                  <CardTitle>高级设置</CardTitle>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                </CollapsibleTrigger>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>红中中奖概率</Label>
+                    <div className="px-3">
+                      <Slider
+                        value={winProbability}
+                        onValueChange={setWinProbability}
+                        max={100}
+                        step={1}
+                        className="w-full"
+                        data-testid="slider-probability"
+                      />
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>0%</span>
+                      <Badge variant="secondary" className="text-lg">
+                        {winProbability[0]}%
+                      </Badge>
+                      <span>100%</span>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={handleSaveProbability}
+                    disabled={isSaving}
                     className="w-full"
-                    data-testid="slider-probability"
-                  />
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>0%</span>
-                  <Badge variant="secondary" className="text-lg">
-                    {winProbability[0]}%
-                  </Badge>
-                  <span>100%</span>
-                </div>
-              </div>
+                    data-testid="button-save-probability"
+                  >
+                    {isSaving ? "保存中..." : "保存设置"}
+                  </Button>
 
-              <Button 
-                onClick={handleSaveProbability}
-                disabled={isSaving}
-                className="w-full"
-                data-testid="button-save-probability"
-              >
-                {isSaving ? "保存中..." : "保存设置"}
-              </Button>
-
-              <div className="text-xs text-muted-foreground">
-                <p>修改后立即生效，影响后续所有抽奖</p>
-              </div>
-            </CardContent>
+                  <div className="text-xs text-muted-foreground">
+                    <p>修改后立即生效，影响后续所有抽奖</p>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
           </Card>
 
           {/* 数据导出 */}

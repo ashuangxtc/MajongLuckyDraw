@@ -58,9 +58,6 @@ const AdminLogin = ({ onLogin, error }: AdminLoginProps) => {
               {isLoading ? "登录中..." : "登录"}
             </Button>
 
-            <div className="text-xs text-muted-foreground text-center mt-4">
-              <p>默认密码: admin123 (开发模式)</p> {/* //todo: remove mock functionality */}
-            </div>
           </form>
         </CardContent>
       </Card>

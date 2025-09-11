@@ -7,16 +7,18 @@ export default function Admin() {
   const [loginError, setLoginError] = useState<string>();
 
   const handleLogin = (password: string) => {
-    // 简单验证 //todo: remove mock functionality
-    if (password === "admin123") {
-      setIsAuthenticated(true);
-      setLoginError(undefined);
-    } else {
-      setLoginError("密码错误，请重试");
-    }
+    // Store token in sessionStorage for API calls
+    sessionStorage.setItem('admin-token', password);
+    
+    // For security, we don't validate the password on client side
+    // The server will validate it on each API request
+    setIsAuthenticated(true);
+    setLoginError(undefined);
   };
 
   const handleLogout = () => {
+    // Clear the admin token from sessionStorage
+    sessionStorage.removeItem('admin-token');
     setIsAuthenticated(false);
     setLoginError(undefined);
   };
