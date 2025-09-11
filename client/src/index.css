@@ -353,21 +353,20 @@
     }
   }
   
-  @keyframes shuffle {
+  @keyframes shuffleStackFan {
+    /* Phase 1 (0-35%): All tiles move to center and stack */
     0% {
+      transform: translateX(var(--fan-x, 0px)) rotate(var(--fan-rot, 0deg));
+      z-index: var(--fan-z, 1);
+    }
+    35% {
       transform: translateX(0) rotate(0deg);
+      z-index: var(--fan-z, 1);
     }
-    25% {
-      transform: translateX(20px) rotate(5deg);
-    }
-    50% {
-      transform: translateX(-30px) rotate(-8deg);
-    }
-    75% {
-      transform: translateX(15px) rotate(3deg);
-    }
+    /* Phase 2 (35-100%): Tiles spread from center to final positions */
     100% {
-      transform: translateX(0) rotate(0deg);
+      transform: translateX(var(--fan-x, 0px)) rotate(var(--fan-rot, 0deg));
+      z-index: var(--fan-z, 1);
     }
   }
   
@@ -441,7 +440,30 @@
   }
   
   .tile-shuffling {
-    animation: shuffle 1.5s ease-in-out;
+    animation: shuffleStackFan 1.5s ease-in-out;
+    pointer-events: none;
+  }
+
+  /* Individual tile positioning for shuffle effect */
+  .tile-position-0 {
+    --fan-x: -120px;
+    --fan-rot: -8deg;
+    --fan-z: 2;
+    animation-delay: 0ms;
+  }
+  
+  .tile-position-1 {
+    --fan-x: 0px;
+    --fan-rot: 0deg;
+    --fan-z: 3; /* Middle tile on top during stacking */
+    animation-delay: 70ms;
+  }
+  
+  .tile-position-2 {
+    --fan-x: 120px;
+    --fan-rot: 8deg;
+    --fan-z: 2;
+    animation-delay: 60ms;
   }
   
   .tile-revealing {

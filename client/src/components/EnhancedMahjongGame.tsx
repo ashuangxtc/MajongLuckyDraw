@@ -397,7 +397,6 @@ const EnhancedMahjongGame = () => {
                     isWinner={tile.isWinner}
                     onClick={() => selectTile(tile.id)}
                     disabled={gameState.phase !== "selecting"}
-                    isShuffling={gameState.phase === "shuffling"}
                     phase={tile.phase}
                     animationDelay={tile.id * 300}
                   />

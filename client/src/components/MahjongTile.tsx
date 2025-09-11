@@ -6,7 +6,6 @@ interface MahjongTileProps {
   isWinner?: boolean;
   onClick: () => void;
   disabled: boolean;
-  isShuffling?: boolean;
   phase?: "initial" | "flying-in" | "showing-front" | "flipping-back" | "shuffling" | "ready" | "revealing" | "revealed";
   frontImage?: string;
   backImage?: string;
@@ -19,7 +18,6 @@ const MahjongTile = ({
   isWinner,
   onClick,
   disabled,
-  isShuffling = false,
   phase = "ready",
   frontImage,
   backImage,
@@ -27,7 +25,6 @@ const MahjongTile = ({
 }: MahjongTileProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [currentPhase, setCurrentPhase] = useState(phase);
-  const [shuffleOffset, setShuffleOffset] = useState({ x: 0, rotation: 0 });
   
   // 默认图片
   const defaultBackImage = "/attached_assets/generated_images/麻将牌背面图案_324a01cc.png";
@@ -40,17 +37,10 @@ const MahjongTile = ({
   useEffect(() => {
     setCurrentPhase(phase);
   }, [phase, id]);
-  
-  // 洗牌动画效果（简化为只使用CSS动画，避免重复变换）
-  useEffect(() => {
-    if (isShuffling) {
-      // 不再使用JavaScript随机偏移，完全依赖CSS动画
-      // 这避免了transform层叠问题
-    }
-  }, [isShuffling]);
   // 获取动画类名
   const getAnimationClasses = () => {
     const baseClasses = "relative w-24 h-36 cursor-pointer transform-gpu perspective-1000";
+    const positionClass = `tile-position-${id}`;
     
     switch (currentPhase) {
       case "initial":
@@ -62,7 +52,7 @@ const MahjongTile = ({
       case "flipping-back":
         return `${baseClasses} transition-all duration-700`;
       case "shuffling":
-        return `${baseClasses} tile-shuffling`;
+        return `${baseClasses} tile-shuffling ${positionClass}`;
       case "ready":
         return `${baseClasses} tile-ready ${!disabled ? "" : "pointer-events-none"}`;
       case "revealing":
