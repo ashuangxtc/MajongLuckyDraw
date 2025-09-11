@@ -212,6 +212,36 @@ export class MemStorage implements IStorage {
   async setWinProbability(probability: number): Promise<void> {
     await this.setConfig("prob_hongzhong", probability.toString());
   }
+
+  // 重置参与者状态（删除其抽奖记录）
+  async resetUserParticipation(userKey: string): Promise<boolean> {
+    const drawId = `draw_${userKey}`;
+    if (this.draws.has(drawId)) {
+      this.draws.delete(drawId);
+      return true;
+    }
+    return false;
+  }
+
+  // 获取所有参与者列表（用于管理界面显示）
+  async getAllParticipants(): Promise<Array<{
+    userIdentifier: string;
+    ip: string;
+    timestamp: number;
+    result: string;
+    redeemed: boolean;
+  }>> {
+    const draws = Array.from(this.draws.values())
+      .sort((a, b) => b.timestamp - a.timestamp);
+    
+    return draws.map(draw => ({
+      userIdentifier: draw.userKey,
+      ip: draw.ip,
+      timestamp: draw.timestamp,
+      result: draw.result,
+      redeemed: draw.redeemed ?? false
+    }));
+  }
 }
 
 export const storage = new MemStorage();

@@ -1,0 +1,158 @@
+一、需求背景
+
+用户通过二维码进入抽奖页面。
+
+活动未开始时，用户扫码只能看到**“请等待”提示**，禁止抽奖。
+
+活动开始时，由管理员在后台点击“开闸”或到达预设时间，用户才可以进行抽奖。
+
+活动结束后，扫码只能看到“活动已结束”。
+
+二、核心思路
+
+数据库维护活动状态：
+状态可为 waiting / open / closed。
+（也可加上 start_at / end_at 时间戳，自动控制状态）
+
+接口设计：
+
+/api/status → 查询当前活动状态（前端进入页面时先请求）。
+
+/api/draw → 执行抽奖逻辑（必须在状态 open 时才允许）。
+
+/api/admin/set-status → 管理员手动切换状态。
+
+/api/admin/set-window → 设置自动开始/结束时间。
+
+前端逻辑：
+
+进入页面先调用 /api/status。
+
+如果返回 waiting → 显示“请等待”活动提示。
+
+如果返回 open → 渲染麻将洗牌/翻牌抽奖 UI。
+
+如果返回 closed → 显示“活动已结束”。
+
+可以用 setInterval/setTimeout 定时轮询状态，或者用 WebSocket 实时推送。
+
+可选增强：
+
+动态二维码（带短期令牌参数），防止提前扫码。
+
+现场口令：管理员输入密码后手动“开闸”。
+
+一次性 ticket：用户在 open 状态下先获取一次性票据，持票才能调用 /api/draw。
+
+三、数据库设计（SQLite）
+-- 活动表
+CREATE TABLE IF NOT EXISTS events (
+  id TEXT PRIMARY KEY,
+  status TEXT NOT NULL DEFAULT 'waiting', -- waiting/open/closed
+  start_at INTEGER,   -- 可选：活动开始时间 (毫秒)
+  end_at INTEGER,     -- 可选：活动结束时间 (毫秒)
+  updated_at INTEGER
+);
+
+-- 初始化一条记录
+INSERT OR IGNORE INTO events (id, status, start_at, end_at, updated_at)
+VALUES ('default', 'waiting', NULL, NULL, strftime('%s','now')*1000);
+
+四、服务端代码示例（Node.js + Express）
+1. 活动状态接口
+app.get('/api/status', (req, res) => {
+  db.get(`SELECT id,status,start_at,end_at FROM events WHERE id=?`, ['default'], (err,row)=>{
+    if (err || !row) return res.status(500).json({ok:false, msg:'status unavailable'});
+    const now = Date.now();
+    let status = row.status;
+    if (row.start_at && now < row.start_at) status = 'waiting';
+    if (row.start_at && now >= row.start_at && (!row.end_at || now <= row.end_at)) {
+      status = (row.status==='closed' ? 'closed' : 'open');
+    }
+    if (row.end_at && now > row.end_at) status = 'closed';
+    res.json({ok:true, status, start_at: row.start_at, end_at: row.end_at});
+  });
+});
+
+2. 抽奖接口（受限）
+app.post('/api/draw', (req, res) => {
+  db.get(`SELECT status,start_at,end_at FROM events WHERE id=?`, ['default'], (err,row)=>{
+    if (err || !row) return res.status(500).json({ok:false, msg:'event error'});
+    const now = Date.now();
+    let status = row.status;
+    if (row.start_at && now < row.start_at) status = 'waiting';
+    if (row.end_at && now > row.end_at) status = 'closed';
+
+    if (status !== 'open') {
+      return res.status(403).json({ok:false, msg:'not_open_yet'});
+    }
+
+    // TODO: 这里继续写抽奖逻辑（概率判定 + 数据写入）
+    res.json({ok:true, result:"hongzhong", code:"DM-20250912-XXXX"});
+  });
+});
+
+3. 管理员接口
+function requireAdmin(req,res,next){
+  if (req.headers['x-admin-key'] !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ok:false, msg:'unauthorized'});
+  }
+  next();
+}
+
+// 手动切换状态
+app.post('/api/admin/set-status', requireAdmin, (req,res)=>{
+  const {status} = req.body;
+  if (!['waiting','open','closed'].includes(status)) {
+    return res.status(400).json({ok:false, msg:'bad status'});
+  }
+  db.run(`UPDATE events SET status=?, updated_at=? WHERE id='default'`, [status, Date.now()], (err)=>{
+    if (err) return res.status(500).json({ok:false});
+    res.json({ok:true});
+  });
+});
+
+// 设置开始/结束时间
+app.post('/api/admin/set-window', requireAdmin, (req,res)=>{
+  const {start_at, end_at} = req.body;
+  db.run(`UPDATE events SET start_at=?, end_at=?, updated_at=? WHERE id='default'`,
+    [start_at || null, end_at || null, Date.now()],
+    (err)=>{ if (err) return res.status(500).json({ok:false}); res.json({ok:true}); }
+  );
+});
+
+五、前端接入逻辑
+<script>
+async function boot() {
+  const r = await fetch('/api/status').then(r=>r.json()).catch(()=>({ok:false}));
+  if (!r.ok) { showWaiting('网络异常，请稍候…'); return; }
+
+  if (r.status !== 'open') {
+    const tip = (r.status==='waiting') ? '活动尚未开始，请稍候~' :
+                (r.status==='closed')  ? '本场活动已结束，感谢关注~' :
+                                         '请稍候~';
+    showWaiting(tip);
+    setTimeout(boot, 10000); // 每 10 秒轮询
+    return;
+  }
+
+  showGame(); // 渲染麻将洗牌/翻牌 UI，并允许点击调用 /api/draw
+}
+boot();
+</script>
+
+六、防提前扫码的额外手段（可选）
+
+动态二维码：活动开始前二维码携带临时令牌，后台验证有效期。
+
+管理员现场口令：后台输入 PIN 才能切换 waiting → open。
+
+一次性 ticket：抽奖需先请求 /api/ticket 获取临时凭证，再用它调用 /api/draw。
+
+✅ 用这套逻辑，你就能保证：
+
+活动没开始前扫码 → 永远停留在等待界面。
+
+你手动或定时开闸 → 用户才能真正抽奖。
+
+活动结束 → 所有人只能看到结束提示。

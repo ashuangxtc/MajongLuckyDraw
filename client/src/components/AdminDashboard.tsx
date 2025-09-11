@@ -259,38 +259,65 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
             <CardTitle>活动状态控制</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
+            <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span>当前状态：</span>
+                <span className="font-medium">当前状态：</span>
                 <Badge 
                   variant={
                     activityState?.status === "open" ? "default" : 
                     activityState?.status === "waiting" ? "secondary" : "destructive"
                   }
+                  className="text-sm"
                 >
-                  {activityState?.status === "open" && "活动进行中"}
-                  {activityState?.status === "waiting" && "等待开始"}
-                  {activityState?.status === "closed" && "已结束"}
+                  {activityState?.status === "open" && "🟢 活动进行中"}
+                  {activityState?.status === "waiting" && "🟡 等待开始"}
+                  {activityState?.status === "closed" && "🔴 已结束"}
                 </Badge>
+                {isUpdatingStatus && (
+                  <span className="text-sm text-muted-foreground">更新中...</span>
+                )}
               </div>
-              
-              <Select 
-                onValueChange={handleUpdateStatus}
-                disabled={isUpdatingStatus}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="切换状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="waiting">等待开始</SelectItem>
-                  <SelectItem value="open">开始活动</SelectItem>
-                  <SelectItem value="closed">结束活动</SelectItem>
-                </SelectContent>
-              </Select>
 
-              {isUpdatingStatus && (
-                <span className="text-sm text-muted-foreground">更新中...</span>
-              )}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">状态控制</Label>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleUpdateStatus("waiting")}
+                    disabled={isUpdatingStatus}
+                    variant={activityState?.status === "waiting" ? "default" : "outline"}
+                    size="sm"
+                    data-testid="button-status-waiting"
+                    className={activityState?.status === "waiting" ? "bg-yellow-500 hover:bg-yellow-600" : ""}
+                  >
+                    {activityState?.status === "waiting" ? "● " : "○ "}等待开始
+                  </Button>
+                  
+                  <Button
+                    onClick={() => handleUpdateStatus("open")}
+                    disabled={isUpdatingStatus}
+                    variant={activityState?.status === "open" ? "default" : "outline"}
+                    size="sm"
+                    data-testid="button-status-open"
+                    className={activityState?.status === "open" ? "bg-green-500 hover:bg-green-600" : ""}
+                  >
+                    {activityState?.status === "open" ? "● " : "○ "}开始活动
+                  </Button>
+                  
+                  <Button
+                    onClick={() => handleUpdateStatus("closed")}
+                    disabled={isUpdatingStatus}
+                    variant={activityState?.status === "closed" ? "default" : "outline"}
+                    size="sm"
+                    data-testid="button-status-closed"
+                    className={activityState?.status === "closed" ? "bg-red-500 hover:bg-red-600" : ""}
+                  >
+                    {activityState?.status === "closed" ? "● " : "○ "}结束活动
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  点击按钮可立即切换活动状态，● 表示当前状态
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

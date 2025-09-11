@@ -210,6 +210,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 8. 获取参与者列表
+  app.get('/api/admin/participants', requireAdmin, async (req, res) => {
+    try {
+      const participants = await storage.getAllParticipants();
+      res.json({
+        ok: true,
+        participants
+      });
+    } catch (error) {
+      res.status(500).json({ ok: false });
+    }
+  });
+
+  // 9. 重置参与者状态
+  app.post('/api/admin/reset-user', requireAdmin, async (req, res) => {
+    try {
+      const { userKey } = req.body;
+      
+      if (!userKey) {
+        return res.status(400).json({ ok: false, msg: 'missing_user_key' });
+      }
+
+      const success = await storage.resetUserParticipation(userKey);
+      
+      if (success) {
+        res.json({ ok: true, msg: 'user_reset_success' });
+      } else {
+        res.status(404).json({ ok: false, msg: 'user_not_found' });
+      }
+    } catch (error) {
+      res.status(500).json({ ok: false });
+    }
+  });
+
+  // 10. 批量重置所有参与者
+  app.post('/api/admin/reset-all', requireAdmin, async (req, res) => {
+    try {
+      const participants = await storage.getAllParticipants();
+      let resetCount = 0;
+      
+      for (const participant of participants) {
+        const success = await storage.resetUserParticipation(participant.userIdentifier);
+        if (success) resetCount++;
+      }
+      
+      res.json({ 
+        ok: true, 
+        msg: 'reset_all_success',
+        resetCount
+      });
+    } catch (error) {
+      res.status(500).json({ ok: false });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
