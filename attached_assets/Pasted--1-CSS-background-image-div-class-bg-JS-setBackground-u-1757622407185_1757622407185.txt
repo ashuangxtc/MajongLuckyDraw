@@ -1,0 +1,123 @@
+翻牌动画需求拆解
+1. 背景和牌面可替换
+
+背景：通过 CSS background-image 或 <div class="bg"> 设置背景图。提供一个 JS 方法 setBackground(url) 动态换图。
+
+牌面：每张麻将牌都是一个容器 <div class="card">，内部有 .front（正面，显示红中/白板）和 .back（背面，统一背图）。提供方法 setCardFace(index, url) 可动态替换。
+
+2. 初始展示效果
+
+页面刚进入时，三张牌依次飞入（腾空效果，带 scale 放大和透明度渐变）。
+
+初始展示时，正面先显示红中（或其他牌面图案），用户能看到三张牌正面。
+
+3. 洗牌效果
+
+延迟 2–3 秒后，三张牌自动翻到背面（背图统一）。
+
+然后执行“洗牌”动画：
+
+三张牌左右移动、互换位置，带轻微旋转；
+
+动画 1–2 秒，结束时三张牌都背面朝上。
+
+4. 抽牌与翻牌
+
+用户点击任意一张牌：
+
+该牌执行 Y 轴翻转 → 翻出正面（中奖时显示红中 / 未中时显示白板）；
+
+同时做一个“腾空”放大动画（scale(1.2) + translateY(-30px)），突出展示结果。
+
+🧩 前端代码结构（示例）
+<div class="game">
+  <div class="bg"></div>
+  <div class="cards">
+    <div class="card" data-index="0">
+      <div class="face front"></div>
+      <div class="face back"></div>
+    </div>
+    <div class="card" data-index="1">
+      <div class="face front"></div>
+      <div class="face back"></div>
+    </div>
+    <div class="card" data-index="2">
+      <div class="face front"></div>
+      <div class="face back"></div>
+    </div>
+  </div>
+</div>
+
+CSS 动画关键点
+.game { position:relative; width:100%; height:100vh; overflow:hidden; }
+.bg { position:absolute; width:100%; height:100%; background-size:cover; background-position:center; }
+.cards { position:relative; display:flex; justify-content:center; gap:20px; top:40%; }
+
+.card { width:120px; height:180px; perspective:1000px; cursor:pointer; }
+.card .face {
+  width:100%; height:100%; position:absolute; backface-visibility:hidden;
+  border-radius:12px; background-size:cover; background-position:center;
+}
+.card .front { transform: rotateY(0deg); }
+.card .back  { transform: rotateY(180deg); }
+
+.card.flipped .front { transform: rotateY(0); }
+.card.flipped .back  { transform: rotateY(180deg); }
+.card.flipped { transform: rotateY(180deg) scale(1.2) translateY(-30px); transition: transform .8s ease; }
+
+JS 控制逻辑
+// 设置背景
+function setBackground(url) {
+  document.querySelector('.bg').style.backgroundImage = `url(${url})`;
+}
+
+// 设置牌面
+function setCardFace(index, frontUrl, backUrl) {
+  const card = document.querySelector(`.card[data-index="${index}"]`);
+  card.querySelector('.front').style.backgroundImage = `url(${frontUrl})`;
+  card.querySelector('.back').style.backgroundImage = `url(${backUrl})`;
+}
+
+// 初始展示
+function showInitialFaces() {
+  document.querySelectorAll('.card').forEach((card,i)=>{
+    setTimeout(()=> {
+      card.style.transform = 'scale(1) translateY(0)'; 
+      card.style.opacity = 1;
+    }, i*300); // 依次出现
+  });
+}
+
+// 洗牌
+function shuffleCards() {
+  const cards = document.querySelectorAll('.card');
+  cards.forEach((card,i)=>{
+    card.classList.add('flip-to-back'); // 翻到背面
+  });
+  setTimeout(()=>{
+    cards.forEach((card,i)=>{
+      card.style.transform = `translateX(${(Math.random()-0.5)*100}px) rotate(${(Math.random()-0.5)*20}deg)`;
+    });
+    setTimeout(()=>{
+      cards.forEach(card=> card.style.transform = 'translateX(0) rotate(0)');
+    },1500);
+  },1000);
+}
+
+// 抽牌
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('click', ()=>{
+    if (card.classList.contains('flipped')) return;
+    card.classList.add('flipped'); // 翻到正面并放大
+  });
+});
+
+✅ 可调整的部分
+
+随时替换背景：setBackground('bg1.jpg')。
+
+随时替换牌面：setCardFace(0,'hongzhong.png','back.png')。
+
+洗牌动画参数：translateX / rotate / 时长可调。
+
+抽牌翻转 + 放大：通过 flipped class 实现。
