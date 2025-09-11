@@ -40,6 +40,15 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   });
 
   const [winnerList, setWinnerList] = useState<any[]>([]);
+  const [participants, setParticipants] = useState<Array<{
+    userIdentifier: string;
+    ip: string;
+    timestamp: number;
+    result: string;
+    redeemed: boolean;
+  }>>([]);
+  const [isResettingUser, setIsResettingUser] = useState<string | null>(null);
+  const [isResettingAll, setIsResettingAll] = useState(false);
 
   // 加载初始数据
   useEffect(() => {
@@ -47,6 +56,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     loadStats();
     loadWinnerList();
     loadWinProbability();
+    loadParticipants();
   }, []);
 
   // 加载活动状态
@@ -116,6 +126,24 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   // 加载中奖概率
   const loadWinProbability = async () => {
     // 从stats中获取winRate
+  };
+
+  // 加载参与者列表
+  const loadParticipants = async () => {
+    try {
+      const response = await fetch('/api/admin/participants', {
+        headers: {
+          'x-admin-password': 'admin123'
+        }
+      });
+      const data = await response.json();
+      
+      if (data.ok) {
+        setParticipants(data.participants);
+      }
+    } catch (error) {
+      console.error('Failed to load participants:', error);
+    }
   };
 
   // 保存中奖概率
@@ -234,6 +262,72 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     } catch (error) {
       console.error('Failed to export CSV:', error);
       alert('导出数据失败：' + (error instanceof Error ? error.message : String(error)));
+    }
+  };
+
+  // 重置单个参与者
+  const handleResetUser = async (userIdentifier: string) => {
+    // userIdentifier在这里实际上是userKey
+    setIsResettingUser(userIdentifier);
+    try {
+      const response = await fetch('/api/admin/reset-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': 'admin123'
+        },
+        body: JSON.stringify({ userKey: userIdentifier })
+      });
+
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.msg || '重置失败');
+      }
+      
+      // 重新加载参与者列表和统计数据
+      await loadParticipants();
+      await loadStats();
+      
+      alert('重置成功！该用户现在可以重新参与抽奖。');
+    } catch (error) {
+      console.error('Failed to reset user:', error);
+      alert('重置用户失败：' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsResettingUser(null);
+    }
+  };
+
+  // 批量重置所有参与者
+  const handleResetAll = async () => {
+    if (!confirm('确定要重置所有参与者吗？这将清除所有抽奖记录，所有用户都可以重新参与。')) {
+      return;
+    }
+
+    setIsResettingAll(true);
+    try {
+      const response = await fetch('/api/admin/reset-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': 'admin123'
+        }
+      });
+
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.msg || '重置失败');
+      }
+      
+      // 重新加载参与者列表和统计数据
+      await loadParticipants();
+      await loadStats();
+      
+      alert(`成功重置 ${data.resetCount} 个参与者！所有用户现在都可以重新参与抽奖。`);
+    } catch (error) {
+      console.error('Failed to reset all users:', error);
+      alert('批量重置失败：' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsResettingAll(false);
     }
   };
 
@@ -442,6 +536,95 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
             </CardContent>
           </Card>
         </div>
+
+        {/* 参与者管理 */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>参与者管理</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                当前共有 {participants.length} 个参与者，可以重置单个或批量重置所有参与者状态
+              </p>
+              <Button
+                onClick={handleResetAll}
+                disabled={isResettingAll || participants.length === 0}
+                variant="destructive"
+                size="sm"
+                data-testid="button-reset-all"
+              >
+                {isResettingAll ? "重置中..." : "重置所有参与者"}
+              </Button>
+            </div>
+
+            {participants.length > 0 ? (
+              <div className="border rounded-lg">
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3">IP地址</th>
+                        <th className="text-left p-3">参与时间</th>
+                        <th className="text-left p-3">抽奖结果</th>
+                        <th className="text-left p-3">状态</th>
+                        <th className="text-right p-3">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {participants.map((participant, index) => (
+                        <tr key={participant.userIdentifier} className="border-b last:border-b-0 hover:bg-muted/30">
+                          <td className="p-3 font-mono text-xs">{participant.ip}</td>
+                          <td className="p-3 text-xs">
+                            {new Date(participant.timestamp).toLocaleString('zh-CN')}
+                          </td>
+                          <td className="p-3">
+                            <Badge 
+                              variant={participant.result === "hongzhong" ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {participant.result === "hongzhong" ? "🎉 中奖" : "未中奖"}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
+                            <Badge 
+                              variant={participant.redeemed ? "destructive" : "outline"}
+                              className="text-xs"
+                            >
+                              {participant.redeemed ? "已核销" : "未核销"}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-right">
+                            <Button
+                              onClick={() => handleResetUser(participant.userIdentifier)}
+                              disabled={isResettingUser === participant.userIdentifier}
+                              variant="outline"
+                              size="sm"
+                              data-testid={`button-reset-user-${index}`}
+                            >
+                              {isResettingUser === participant.userIdentifier ? "重置中..." : "重置"}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>暂无参与者记录</p>
+                <p className="text-xs mt-1">用户参与抽奖后会在这里显示</p>
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>• 重置后，对应的用户可以重新参与抽奖</p>
+              <p>• 重置操作会删除用户的抽奖记录，无法恢复</p>
+              <p>• 批量重置会清空所有参与者记录</p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 详细记录表格 */}
         <Card>
