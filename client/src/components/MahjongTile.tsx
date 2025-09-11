@@ -34,6 +34,7 @@ const MahjongTile = ({
   const actualBackImage = backImage || defaultBackImage;
   const actualFrontImage = frontImage || (isWinner ? defaultWinnerImage : defaultLoserImage);
   
+  
   useEffect(() => {
     setCurrentPhase(phase);
   }, [phase, id]);
@@ -64,18 +65,26 @@ const MahjongTile = ({
     }
   };
   
-  // 获取卡片变换样式（简化以避免重复变换）
+  // 获取卡片变换样式（确保正确的背面/正面显示）
   const getCardTransform = () => {
-    // 翻转效果（修复方向语义，确保显示正面时真正显示正面）
+    // 在显示正面的阶段，翻转到正面
     if (currentPhase === "showing-front") {
-      return "rotateY(180deg)";  // 显示正面（前图在180deg侧）
-    } else if (currentPhase === "flipping-back" || currentPhase === "shuffling" || currentPhase === "ready") {
-      return "rotateY(0deg)";    // 显示背面（背图在0deg侧）
-    } else if (isFlipped) {
-      return "rotateY(180deg)";
+      return "rotateY(180deg)";  // 显示正面（正面图片在180deg侧）
+    }
+    // 在以下阶段显示背面
+    else if (currentPhase === "flipping-back" || currentPhase === "shuffling" || currentPhase === "ready") {
+      return "rotateY(0deg)";    // 显示背面（背面图片在0deg侧）
+    }
+    // 揭示和揭示后阶段，根据翻牌状态决定
+    else if (currentPhase === "revealing" || currentPhase === "revealed") {
+      return isFlipped ? "rotateY(180deg)" : "rotateY(0deg)";
+    }
+    // 初始状态显示背面
+    else if (currentPhase === "initial" || currentPhase === "flying-in") {
+      return "rotateY(0deg)";
     }
     
-    return "";
+    return "rotateY(0deg)";  // 默认显示背面
   };
   
   return (

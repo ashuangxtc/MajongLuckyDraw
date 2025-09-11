@@ -345,11 +345,11 @@
   @keyframes flyIn {
     0% {
       opacity: 0;
-      transform: scale(0.8) translateY(50px) rotateY(-15deg);
+      transform: scale(0.8) translateY(50px);
     }
     100% {
       opacity: 1;
-      transform: scale(1) translateY(0) rotateY(0deg);
+      transform: scale(1) translateY(0);
     }
   }
   
@@ -381,13 +381,13 @@
   
   @keyframes revealCard {
     0% {
-      transform: rotateY(0deg) scale(1) translateY(0);
+      transform: scale(1) translateY(0);
     }
     50% {
-      transform: rotateY(90deg) scale(1.05) translateY(-10px);
+      transform: scale(1.05) translateY(-10px);
     }
     100% {
-      transform: rotateY(180deg) scale(1.1) translateY(-20px);
+      transform: scale(1.1) translateY(-20px);
     }
   }
   
@@ -472,7 +472,6 @@
   }
   
   .tile-revealed {
-    transform: scale(1.1) translateY(-20px);
     z-index: 10;
     filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
   }
