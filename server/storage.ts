@@ -47,6 +47,16 @@ export interface IStorage {
   setConfig(id: string, value: any): Promise<void>;
   getWinProbability(): Promise<number>;
   setWinProbability(probability: number): Promise<void>;
+  
+  // Participant management methods
+  resetUserParticipation(userKey: string): Promise<boolean>;
+  getAllParticipants(): Promise<Array<{
+    userIdentifier: string;
+    ipAddress: string;
+    timestamp: number;
+    result: string;
+    status: string;
+  }>>;
 }
 
 export class MemStorage implements IStorage {
@@ -215,19 +225,13 @@ export class MemStorage implements IStorage {
 
   // 重置参与者状态（删除其抽奖记录）
   async resetUserParticipation(userKey: string): Promise<boolean> {
-    console.log('[DEBUG] Storage reset - looking for userKey:', userKey);
-    console.log('[DEBUG] Storage reset - available draws:', Array.from(this.draws.keys()));
-    
     // 使用getUserDraw方法查找用户的draw记录
     const userDraw = await this.getUserDraw(userKey);
-    console.log('[DEBUG] Storage reset - found user draw:', userDraw ? userDraw.id : 'not found');
     
     if (userDraw) {
       this.draws.delete(userDraw.id);
-      console.log('[DEBUG] Storage reset - deleted draw with id:', userDraw.id);
       return true;
     }
-    console.log('[DEBUG] Storage reset - user draw not found for userKey:', userKey);
     return false;
   }
 

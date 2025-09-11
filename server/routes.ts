@@ -228,20 +228,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userKey } = req.body;
       
-      console.log('[DEBUG] Reset user request:', { userKey, body: req.body });
-      
       if (!userKey) {
-        console.log('[DEBUG] Missing userKey in request');
         return res.status(400).json({ ok: false, msg: 'missing_user_key' });
       }
 
-      // 先查看所有参与者
-      const allParticipants = await storage.getAllParticipants();
-      console.log('[DEBUG] All participants:', allParticipants.map(p => ({ userIdentifier: p.userIdentifier })));
-      console.log('[DEBUG] Looking for userKey:', userKey);
-
       const success = await storage.resetUserParticipation(userKey);
-      console.log('[DEBUG] Reset result:', success);
       
       if (success) {
         res.json({ ok: true, msg: 'user_reset_success' });
@@ -249,7 +240,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(404).json({ ok: false, msg: 'user_not_found' });
       }
     } catch (error) {
-      console.error('[DEBUG] Reset error:', error);
       res.status(500).json({ ok: false });
     }
   });
