@@ -189,20 +189,23 @@ const EnhancedMahjongGame = () => {
     showInitialDisplay();
   };
 
+  // 交互锁定防止多重点击
+  const interactionLockedRef = useRef(false);
+
   // 选择牌
   const selectTile = async (tileId: number) => {
-    if (gameState.phase !== "selecting" || activityStatus?.status !== "open") return;
+    if (gameState.phase !== "selecting" || activityStatus?.status !== "open" || interactionLockedRef.current) return;
+    
+    // 立即锁定交互，防止多重点击
+    interactionLockedRef.current = true;
 
+    // 记录选中的牌，但不改变global phase避免UI变化
     setGameState(prev => ({ 
       ...prev, 
-      phase: "revealing",
       selectedTile: tileId 
     }));
 
-    // 立即开始翻转动画，提供即时反馈
-    setTilesConfig(prev => prev.map(t => 
-      t.id === tileId ? { ...t, phase: "revealing", isFlipped: true } : t
-    ));
+    // 点击后完全无画面变化，连全局状态都不改变
 
     try {
       const response = await fetch('/api/draw', {
@@ -215,6 +218,8 @@ const EnhancedMahjongGame = () => {
       const result = await response.json();
 
       if (!response.ok) {
+        // 释放交互锁定，防止锁定泄漏
+        interactionLockedRef.current = false;
         if (result.msg === 'already_participated') {
           setGameState(prev => ({ ...prev, hasPlayed: true, phase: "finished" }));
           return;
@@ -226,8 +231,16 @@ const EnhancedMahjongGame = () => {
         throw new Error(result.msg || "抽奖失败");
       }
 
-      // API响应后，不需要再次设置isFlipped和phase（已在选择时设置）
-      // 保持revealing状态，isWinner仍延迟到动画完成后设置
+      // API响应后才开始所有画面变化：全局状态+翻转动画
+      setGameState(prev => ({ ...prev, phase: "revealing" }));
+      setTilesConfig(prev => prev.map(t => 
+        t.id === tileId ? { 
+          ...t, 
+          phase: "revealing",
+          isFlipped: true,
+          isWinner: false  // revealing期间绝对不设置真实结果
+        } : t
+      ));
       
       // 只有在动画完全结束且进入revealed阶段时才设置真实结果
       const winnerTimer = setTimeout(() => {
@@ -238,6 +251,8 @@ const EnhancedMahjongGame = () => {
             isWinner: result.win  // 此时才设置真实结果
           } : t
         ));
+        // 动画完成后重置交互锁定，为下次游戏做准备
+        interactionLockedRef.current = false;
       }, ANIMATION_TIMINGS.REVEAL_ANIMATION_DURATION);
       timerRefs.current.push(winnerTimer);
 
@@ -260,9 +275,12 @@ const EnhancedMahjongGame = () => {
 
     } catch (error) {
       console.error('Draw error:', error);
-      setError("抽奖失败，请重试");
-      setGameState(prev => ({ ...prev, phase: "waiting" }));
-      setTilesConfig(prev => prev.map(t => ({ ...t, phase: "initial" })));
+      // 错误时不设置全局错误，使用toast提示并保持可重试状态
+      // 重置交互锁定，保持selecting状态允许立即重试
+      interactionLockedRef.current = false;
+      setGameState(prev => ({ ...prev, phase: "selecting", selectedTile: null }));
+      setTilesConfig(prev => prev.map(t => ({ ...t, phase: "ready" })));
+      // TODO: 这里应该显示toast错误提示，而不是全局错误
     }
   };
 

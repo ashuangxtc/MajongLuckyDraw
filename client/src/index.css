@@ -354,18 +354,18 @@
   }
   
   @keyframes shuffleStackFan {
-    /* Phase 1 (0-35%): All tiles move to center and stack */
+    /* Phase 1 (0-40%): All tiles move to center and stack completely */
     0% {
-      transform: translateX(var(--fan-x, 0px)) rotate(var(--fan-rot, 0deg));
+      transform: translateX(var(--fan-x, 0px)) translateY(0px) rotate(var(--fan-rot, 0deg)) scale(1);
       z-index: var(--fan-z, 1);
     }
-    35% {
-      transform: translateX(0) rotate(0deg);
+    40% {
+      transform: translateX(0) translateY(0) rotate(0deg) scale(0.95);
       z-index: var(--fan-z, 1);
     }
-    /* Phase 2 (35-100%): Tiles spread from center to final positions */
+    /* Phase 2 (40-100%): Tiles spread from center to final positions */
     100% {
-      transform: translateX(var(--fan-x, 0px)) rotate(var(--fan-rot, 0deg));
+      transform: translateX(var(--fan-x, 0px)) translateY(0px) rotate(var(--fan-rot, 0deg)) scale(1);
       z-index: var(--fan-z, 1);
     }
   }
@@ -450,6 +450,7 @@
     --fan-x: -120px;
     --fan-rot: -8deg;
     --fan-z: 2;
+    --stack-y: -2px; /* 左牌在堆叠时稍微向上 */
     animation-delay: 0ms;
   }
   
@@ -457,6 +458,7 @@
     --fan-x: 0px;
     --fan-rot: 0deg;
     --fan-z: 3; /* Middle tile on top during stacking */
+    --stack-y: 0px; /* 中间牌保持中心位置 */
     animation-delay: 70ms;
   }
   
@@ -464,6 +466,7 @@
     --fan-x: 120px;
     --fan-rot: 8deg;
     --fan-z: 2;
+    --stack-y: 2px; /* 右牌在堆叠时稍微向下 */
     animation-delay: 60ms;
   }
 
