@@ -220,15 +220,25 @@ const EnhancedMahjongGame = () => {
         throw new Error(result.msg || "抽奖失败");
       }
 
-      // 立即更新牌的翻转状态
+      // 立即开始翻转动画，但不显示最终结果
       setTilesConfig(prev => prev.map(t => 
         t.id === tileId ? { 
           ...t, 
           isFlipped: true, 
-          isWinner: result.win,
           phase: "revealing" 
         } : t
       ));
+
+      // 延迟一半时间后设置最终结果（翻转动画中点）
+      const winnerTimer = setTimeout(() => {
+        setTilesConfig(prev => prev.map(t => 
+          t.id === tileId ? { 
+            ...t, 
+            isWinner: result.win
+          } : t
+        ));
+      }, ANIMATION_TIMINGS.REVEAL_ANIMATION_DURATION / 2);
+      timerRefs.current.push(winnerTimer);
 
       // 等待翻牌动画完成后设置为revealed状态（匹配CSS动画时长）
       const revealTimer = setTimeout(() => {

@@ -220,7 +220,7 @@ export class MemStorage implements IStorage {
   }
 
   async setWinProbability(probability: number): Promise<void> {
-    await this.setConfig("prob_hongzhong", probability.toString());
+    await this.setConfig("prob_hongzhong", probability);
   }
 
   // 重置参与者状态（删除其抽奖记录）
