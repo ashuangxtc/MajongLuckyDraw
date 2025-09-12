@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import backImageUrl from "@assets/generated_images/麻将牌背面图案_324a01cc.png";
+import winnerImageUrl from "@assets/generated_images/红中麻将牌正面_8a7f2e08.png";
+import loserImageUrl from "@assets/generated_images/白板麻将牌正面_0905cb27.png";
 
 interface MahjongTileProps {
   id: number;
@@ -26,10 +29,10 @@ const MahjongTile = ({
   const cardRef = useRef<HTMLDivElement>(null);
   const [currentPhase, setCurrentPhase] = useState(phase);
   
-  // 默认图片
-  const defaultBackImage = "/attached_assets/generated_images/麻将牌背面图案_324a01cc.png";
-  const defaultWinnerImage = "/attached_assets/generated_images/红中麻将牌正面_8a7f2e08.png";
-  const defaultLoserImage = "/attached_assets/generated_images/白板麻将牌正面_0905cb27.png";
+  // 默认图片 - 使用正确的导入路径
+  const defaultBackImage = backImageUrl;
+  const defaultWinnerImage = winnerImageUrl;
+  const defaultLoserImage = loserImageUrl;
   
   const actualBackImage = backImage || defaultBackImage;
   
