@@ -442,6 +442,7 @@
   .tile-shuffling {
     animation: shuffleStackFan 1.5s ease-in-out;
     pointer-events: none;
+    position: relative !important;
   }
 
   /* Individual tile positioning for shuffle effect */
@@ -464,6 +465,19 @@
     --fan-rot: 8deg;
     --fan-z: 2;
     animation-delay: 60ms;
+  }
+
+  /* 强制确保z-index在洗牌时生效 */
+  .tile-shuffling.tile-position-0 {
+    z-index: 2 !important;
+  }
+  
+  .tile-shuffling.tile-position-1 {
+    z-index: 3 !important;
+  }
+  
+  .tile-shuffling.tile-position-2 {
+    z-index: 2 !important;
   }
   
   .tile-revealing {

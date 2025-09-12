@@ -166,7 +166,13 @@ const EnhancedMahjongGame = () => {
   // 洗牌动画
   const startShuffle = () => {
     setGameState(prev => ({ ...prev, phase: "shuffling" }));
-    setTilesConfig(prev => prev.map(t => ({ ...t, phase: "shuffling" })));
+    // 修复：确保洗牌时清除所有isWinner状态，并正确应用位置类
+    setTilesConfig(prev => prev.map(t => ({ 
+      ...t, 
+      phase: "shuffling",
+      isWinner: false,  // 洗牌时重置所有winner状态
+      isFlipped: false  // 确保所有牌都是背面朝上
+    })));
     
     // 洗牌完成后准备选择（使用常量并跟踪定时器）
     const shuffleTimer = setTimeout(() => {
@@ -193,9 +199,9 @@ const EnhancedMahjongGame = () => {
       selectedTile: tileId 
     }));
 
-    // 更新选中牌的状态为revealing
+    // 立即开始翻转动画，提供即时反馈
     setTilesConfig(prev => prev.map(t => 
-      t.id === tileId ? { ...t, phase: "revealing" } : t
+      t.id === tileId ? { ...t, phase: "revealing", isFlipped: true } : t
     ));
 
     try {
@@ -220,36 +226,22 @@ const EnhancedMahjongGame = () => {
         throw new Error(result.msg || "抽奖失败");
       }
 
-      // 立即开始翻转动画，但不显示最终结果
-      setTilesConfig(prev => prev.map(t => 
-        t.id === tileId ? { 
-          ...t, 
-          isFlipped: true, 
-          phase: "revealing" 
-        } : t
-      ));
-
-      // 延迟一半时间后设置最终结果（翻转动画中点）
+      // API响应后，不需要再次设置isFlipped和phase（已在选择时设置）
+      // 保持revealing状态，isWinner仍延迟到动画完成后设置
+      
+      // 只有在动画完全结束且进入revealed阶段时才设置真实结果
       const winnerTimer = setTimeout(() => {
         setTilesConfig(prev => prev.map(t => 
           t.id === tileId ? { 
             ...t, 
-            isWinner: result.win
-          } : t
-        ));
-      }, ANIMATION_TIMINGS.REVEAL_ANIMATION_DURATION / 2);
-      timerRefs.current.push(winnerTimer);
-
-      // 等待翻牌动画完成后设置为revealed状态（匹配CSS动画时长）
-      const revealTimer = setTimeout(() => {
-        setTilesConfig(prev => prev.map(t => 
-          t.id === tileId ? { 
-            ...t, 
-            phase: "revealed" 
+            phase: "revealed",  // 同时进入revealed阶段
+            isWinner: result.win  // 此时才设置真实结果
           } : t
         ));
       }, ANIMATION_TIMINGS.REVEAL_ANIMATION_DURATION);
-      timerRefs.current.push(revealTimer);
+      timerRefs.current.push(winnerTimer);
+
+      // 无需额外的revealTimer，因为已在winnerTimer中处理了phase和isWinner的设置
 
       // 显示结果弹窗
       const resultTimer = setTimeout(() => {

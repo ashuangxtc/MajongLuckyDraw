@@ -32,7 +32,15 @@ const MahjongTile = ({
   const defaultLoserImage = "/attached_assets/generated_images/白板麻将牌正面_0905cb27.png";
   
   const actualBackImage = backImage || defaultBackImage;
-  const actualFrontImage = frontImage || (isWinner ? defaultWinnerImage : defaultLoserImage);
+  
+  // 关键修复：完全防止结果泄露 - 只有在revealed阶段才显示真实结果
+  const shouldShowActualResult = currentPhase === "revealed" || 
+    (currentPhase === "showing-front");
+    
+  // 彻底修复：在revealing阶段绝对不显示真实结果，确保无任何泄露
+  const actualFrontImage = frontImage || 
+    (shouldShowActualResult && isWinner ? defaultWinnerImage : 
+     shouldShowActualResult ? defaultLoserImage : defaultLoserImage);  // revealing期间始终显示白板
   
   
   useEffect(() => {
@@ -101,7 +109,8 @@ const MahjongTile = ({
         className="relative w-full h-full transition-transform duration-700 preserve-3d"
         style={{ 
           transformStyle: "preserve-3d",
-          transform: getCardTransform()
+          transform: getCardTransform(),
+          zIndex: currentPhase === "shuffling" ? `var(--fan-z, 1)` : 'auto'
         }}
       >
         {/* 背面 */}
@@ -117,6 +126,12 @@ const MahjongTile = ({
             alt="麻将牌背面"
             className="w-full h-full object-cover rounded-lg"
             data-testid={`tile-${id}-back`}
+            onError={(e) => {
+              console.error(`Failed to load back image: ${actualBackImage}`, e);
+            }}
+            onLoad={() => {
+              console.log(`Successfully loaded back image: ${actualBackImage}`);
+            }}
           />
         </div>
 
@@ -130,9 +145,15 @@ const MahjongTile = ({
         >
           <img
             src={actualFrontImage}
-            alt={isWinner ? "红中" : "白板"}
+            alt={shouldShowActualResult && isWinner ? "红中" : "白板"}
             className="w-full h-full object-cover rounded-lg"
             data-testid={`tile-${id}-front`}
+            onError={(e) => {
+              console.error(`Failed to load image: ${actualFrontImage}`, e);
+            }}
+            onLoad={() => {
+              console.log(`Successfully loaded image: ${actualFrontImage}`);
+            }}
           />
         </div>
       </div>
