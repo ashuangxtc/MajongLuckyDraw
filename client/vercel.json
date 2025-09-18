@@ -1,17 +1,11 @@
 {
     "builds": [
-      {
-        "src": "package.json",
-        "use": "@vercel/static-build",
-        "config": { "distDir": "dist" }
-      }
+      { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
     ],
     "rewrites": [
       { "source": "/api/:path*", "destination": "/api/:path*" },
-  
       { "source": "/assets/:path*", "destination": "/assets/:path*" },
       { "source": "/:file(.*\\.(?:js|css|map|png|jpg|jpeg|gif|svg|ico|txt|json|webp|woff2?|ttf))", "destination": "/:file" },
-  
       { "source": "/(.*)", "destination": "/" }
     ]
   }
