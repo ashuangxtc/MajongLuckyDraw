@@ -4,11 +4,35 @@ import { storage } from "./storage";
 import { ActivityStatus, insertDrawSchema, type ActivityStatusType } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
+import { store, getArrangementForRound } from "./state";
+
+// 新的抽签数据结构
+interface LotteryPlay {
+  deviceId: string;
+  result: '红中' | '白板';
+  timestamp: number;
+}
+
+// 内存存储抽签记录
+const playedDevices = new Set<string>();
+const lotteryLog: LotteryPlay[] = [];
+
+// 抽签配置
+let lotteryConfig = {
+  hongzhongPercent: 67, // 红中中奖概率百分比
+  weights: {
+    hongzhong: 2,
+    baiban: 1
+  }
+};
 
 // 管理员身份验证中间件
 function requireAdmin(req: any, res: any, next: any) {
   const adminPassword = req.headers['x-admin-password'];
-  if (adminPassword !== 'admin123') { // 简单验证，生产环境应该使用更安全的方式
+  const authHeader = req.headers['authorization'];
+  const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  
+  if (adminPassword !== 'admin123' && bearerToken !== 'admin123') {
     return res.status(401).json({ ok: false, msg: 'unauthorized' });
   }
   next();
@@ -52,6 +76,16 @@ async function getActualActivityStatus(): Promise<ActivityStatusType> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // 0. 健康检查路径
+  app.get('/api/health', (req, res) => {
+    res.json({ 
+      ok: true, 
+      message: 'Server is running',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  });
   
   // 1. 查询当前活动状态
   app.get('/api/status', async (req, res) => {
@@ -262,6 +296,158 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ ok: false });
+    }
+  });
+
+  // 11. 新的抽签接口 - 所见即所得
+  app.post('/api/lottery/draw', async (req, res) => {
+    try {
+      const { deviceId, roundId, index } = req.body || {};
+      
+      // 检查活动状态
+      const actualStatus = await getActualActivityStatus();
+      if (actualStatus !== ActivityStatus.OPEN) {
+        return res.status(403).json({ error: 'NOT_OPEN' });
+      }
+      
+      // 验证参数
+      if (!deviceId || roundId !== store.roundId) {
+        return res.status(400).json({ error: 'INVALID_ROUND' });
+      }
+      
+      if (typeof index !== 'number' || index < 0 || index > 2) {
+        return res.status(400).json({ error: 'INVALID_INDEX' });
+      }
+      
+      // 检查是否已参与本轮
+      if (store.played.get(deviceId) === roundId) {
+        return res.status(409).json({ error: 'ALREADY_PLAYED' });
+      }
+      
+      // 获取本轮牌面排列
+      const faces = getArrangementForRound(roundId, store.config.hongzhongPercent);
+      const result = faces[index];
+      const isWinner = result === '红中';
+      
+      // 记录参与
+      store.played.set(deviceId, roundId);
+      store.history.push({
+        deviceId,
+        roundId,
+        result,
+        ts: Date.now()
+      });
+      
+      res.json({ 
+        isWinner,
+        label: result
+      });
+      
+    } catch (error) {
+      console.error('Lottery draw error:', error);
+      res.status(500).json({ error: 'DRAW_ERROR' });
+    }
+  });
+
+  // 12. 获取抽签记录
+  app.get('/api/lottery/played', requireAdmin, async (req, res) => {
+    try {
+      // 按时间倒序返回
+      const sortedLog = [...store.history].sort((a, b) => b.ts - a.ts);
+      res.json(sortedLog);
+    } catch (error) {
+      res.status(500).json({ error: 'FETCH_ERROR' });
+    }
+  });
+
+  // 13. 重置抽签记录
+  app.post('/api/lottery/admin/reset', requireAdmin, async (req, res) => {
+    try {
+      // 增加轮次ID
+      store.roundId++;
+      // 清空参与记录
+      store.played.clear();
+      // 删除旧轮次的排列
+      store.arrangements.delete(store.roundId - 1);
+      // 设置状态为开放
+      store.state = 'open';
+      // 记录重置时间
+      store.resetAt = Date.now();
+      
+      res.json({ 
+        ok: true,
+        roundId: store.roundId
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'RESET_ERROR' });
+    }
+  });
+
+  // 14. 获取抽签状态（健康检查）
+  app.get('/api/lottery/status', async (req, res) => {
+    try {
+      const actualStatus = await getActualActivityStatus();
+      res.json({ 
+        state: actualStatus,
+        roundId: store.roundId,
+        resetAt: store.resetAt
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'STATUS_ERROR' });
+    }
+  });
+
+  // 15. 获取牌面排列
+  app.get('/api/lottery/arrangement', async (req, res) => {
+    try {
+      const faces = getArrangementForRound(store.roundId, store.config.hongzhongPercent);
+      res.json({
+        roundId: store.roundId,
+        faces
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'ARRANGEMENT_ERROR' });
+    }
+  });
+
+  // 16. 获取抽签配置
+  app.get('/api/lottery/config', async (req, res) => {
+    try {
+      res.json(store.config);
+    } catch (error) {
+      res.status(500).json({ error: 'CONFIG_ERROR' });
+    }
+  });
+
+  // 16. 管理员设置状态
+  app.post('/api/lottery/admin/setState', requireAdmin, async (req, res) => {
+    try {
+      const { state } = req.body || {};
+      
+      if (!Object.values(ActivityStatus).includes(state)) {
+        return res.status(400).json({ error: 'INVALID_STATE' });
+      }
+
+      await storage.updateEventStatus(state);
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(500).json({ error: 'STATE_UPDATE_ERROR' });
+    }
+  });
+
+  // 17. 更新抽签配置
+  app.post('/api/lottery/admin/config', requireAdmin, async (req, res) => {
+    try {
+      const { hongzhongPercent } = req.body || {};
+      
+      if (typeof hongzhongPercent === 'number' && hongzhongPercent >= 0 && hongzhongPercent <= 100) {
+        store.config.hongzhongPercent = hongzhongPercent;
+        res.json({ ok: true });
+      } else {
+        res.status(400).json({ error: 'INVALID_PERCENT' });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'CONFIG_UPDATE_ERROR' });
     }
   });
 

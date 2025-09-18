@@ -238,20 +238,20 @@ export class MemStorage implements IStorage {
   // 获取所有参与者列表（用于管理界面显示）
   async getAllParticipants(): Promise<Array<{
     userIdentifier: string;
-    ip: string;
+    ipAddress: string;
     timestamp: number;
     result: string;
-    redeemed: boolean;
+    status: string;
   }>> {
     const draws = Array.from(this.draws.values())
       .sort((a, b) => b.timestamp - a.timestamp);
     
     return draws.map(draw => ({
       userIdentifier: draw.userKey,
-      ip: draw.ip,
+      ipAddress: draw.ip,
       timestamp: draw.timestamp,
       result: draw.result,
-      redeemed: draw.redeemed ?? false
+      status: draw.redeemed ? 'redeemed' : 'pending'
     }));
   }
 }

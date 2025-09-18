@@ -1,32 +1,15 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import Home from "@/pages/Home";
-import Admin from "@/pages/Admin";
-import NotFound from "@/pages/not-found";
+import { Router, Route } from "wouter";
+import GameScreen from "./screens/GameScreen";
+import DrawPage from "./pages/Draw";
+import AdminEnhanced from "./pages/AdminEnhanced";
 
-function Router() {
+export default function App() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/admin" component={Admin} />
-      {/* Fallback to 404 */}
-      <Route component={NotFound} />
-    </Switch>
+    <Router>
+      <Route path="/" component={DrawPage} />
+      <Route path="/draw" component={DrawPage} />
+      <Route path="/admin" component={AdminEnhanced} />
+      <Route path="/game" component={GameScreen} />
+    </Router>
   );
 }
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
-
-export default App;

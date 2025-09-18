@@ -1,6 +1,19 @@
+/* 引入麻将牌样式 - 必须在所有其他CSS之前 */
+@import './styles/mahjong.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html, body, #root { 
+  height: 100%; 
+}
+
+body {
+  background: #fafafa;
+  color: #0a0a0a;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
 
 /* LIGHT MODE */
 :root {
@@ -212,6 +225,12 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  /* Participant page background */
+  .dm-root{
+    background: url('/images/mahjong/background/dreammore-bg.jpg') center/cover no-repeat fixed;
+    min-height: 100dvh;
   }
 }
 
@@ -495,4 +514,26 @@
     filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.4));
     transition: transform 0.3s ease;
   }
+}
+
+/* Probability segmented controls (glassmorphism) */
+.prob-segment.glass{
+  padding:12px 14px;border-radius:16px;
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.prob-title{display:block;font-weight:700;margin-bottom:8px}
+.prob-group{display:flex;gap:8px;flex-wrap:wrap}
+.prob-btn{
+  flex:1 1 120px; min-width:120px;
+  padding:10px 12px; border-radius:999px; border:1px solid rgba(0,0,0,.08);
+  background:#fff; cursor:pointer; font-weight:600;
+}
+.prob-btn.active{ background:#111; color:#fff; }
+.prob-btn:disabled{ opacity:.6; cursor:not-allowed }
+.prob-hint{margin:.5rem 0 0; color:#6b6b70; font-size:13px}
+@media (max-width: 768px){
+  .prob-btn{ flex:1 1 calc(50% - 8px); min-width:auto }
 }

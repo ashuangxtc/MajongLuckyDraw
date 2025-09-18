@@ -6,11 +6,22 @@ export default {
   theme: {
     extend: {
       borderRadius: {
+        xl2: '24px',
         lg: ".5625rem", /* 9px */
         md: ".375rem", /* 6px */
         sm: ".1875rem", /* 3px */
       },
       colors: {
+        // Apple 设计系统颜色
+        body: '#f7f8fa',
+        ink: '#0b0b0b',
+        sub: '#6b7280',
+        jade: {
+          700: '#114a3a', // 墨绿主色
+          800: '#0d3a2d',
+          900: '#092b21'
+        },
+        ceramic: '#f6f6f7',
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
@@ -82,8 +93,13 @@ export default {
           offline: "rgb(156 163 175)",
         },
       },
+      boxShadow: {
+        elevate: '0 12px 30px rgba(0,0,0,.12)',
+        soft: '0 8px 20px rgba(0,0,0,.08)',
+        inset1: 'inset 0 1px 0 rgba(255,255,255,.25), inset 0 -1px 0 rgba(0,0,0,.15)'
+      },
       fontFamily: {
-        sans: ["var(--font-sans)"],
+        sans: ['"SF Pro Text"', 'Inter', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
       },

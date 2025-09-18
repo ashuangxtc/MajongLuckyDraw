@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { 
+      "label": "Dev Web (auto)", 
+      "type": "npm", 
+      "script": "dev:web", 
+      "isBackground": true, 
+      "runOn": "folderOpen" 
+    }
+  ]
+}
