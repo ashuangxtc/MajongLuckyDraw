@@ -8,13 +8,19 @@ function joinUrl(base: string, path: string): string {
 
 export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   const headers = new Headers(init.headers || {});
-  headers.set('X-Client-Id', getClientId());
-  const base = (import.meta as any)?.env?.VITE_API_BASE || '';
+  headers.set("X-Client-Id", getClientId());
+
+  // 前后端都在 Vercel，同域调用
+  const base = "";
   let url: RequestInfo | URL = input;
-  if (typeof input === 'string' && input.startsWith('/')) {
+
+  if (typeof input === "string" && input.startsWith("/")) {
     url = joinUrl(base, input);
   }
-  return fetch(url, { ...init, headers, credentials: 'include', mode: 'cors' as any });
+
+  return fetch(url, {
+    ...init,
+    headers,
+    credentials: "include", // 保留 Cookie
+  });
 }
-
-
