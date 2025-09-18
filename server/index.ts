@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -43,6 +44,10 @@ if (process.env.NODE_ENV !== 'production') {
 // 内存存储
 const participants = new Map<number, Participant>();
 const clientIdToPid = new Map<string, number>();
+// 简易管理员会话：token -> 过期时间戳
+const adminSessions = new Map<string, number>();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Dreammore123';
+const ADMIN_SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 小时
 function readClientId(req: Request): string | undefined {
   const h = (req.headers['x-client-id'] || req.headers['X-Client-Id'] || '') as string;
   const q = (req.query?.cid || req.body?.cid) as string | undefined;
@@ -102,6 +107,52 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// 管理员登录/登出/状态
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body || {};
+  if (String(password || '') !== String(ADMIN_PASSWORD)) {
+    return res.status(401).json({ ok:false, error:'INVALID_PASSWORD' });
+  }
+  const token = crypto.randomUUID();
+  const expiresAt = Date.now() + ADMIN_SESSION_TTL_MS;
+  adminSessions.set(token, expiresAt);
+  res.cookie('admin_session', token, { httpOnly: true, maxAge: ADMIN_SESSION_TTL_MS, sameSite: 'lax' });
+  res.json({ ok:true, expiresAt });
+});
+
+app.post('/api/admin/logout', (req, res) => {
+  const t = req.cookies?.admin_session as string | undefined;
+  if (t) adminSessions.delete(t);
+  res.clearCookie('admin_session');
+  res.json({ ok:true });
+});
+
+app.get('/api/admin/me', (req, res) => {
+  const t = req.cookies?.admin_session as string | undefined;
+  if (!t || !adminSessions.has(t)) return res.status(401).json({ ok:false });
+  const expiresAt = adminSessions.get(t)!;
+  if (Date.now() > expiresAt) {
+    adminSessions.delete(t);
+    res.clearCookie('admin_session');
+    return res.status(401).json({ ok:false, error:'SESSION_EXPIRED' });
+  }
+  res.json({ ok:true, expiresAt });
+});
+
+function requireAdmin(req: Request, res: Response, next: NextFunction){
+  const t = req.cookies?.admin_session as string | undefined;
+  if (!t || !adminSessions.has(t)) return res.status(401).json({ ok:false, error:'ADMIN_REQUIRED' });
+  const expiresAt = adminSessions.get(t)!;
+  if (Date.now() > expiresAt) {
+    adminSessions.delete(t);
+    res.clearCookie('admin_session');
+    return res.status(401).json({ ok:false, error:'SESSION_EXPIRED' });
+  }
+  // 滑动续期：访问刷新过期时间
+  adminSessions.set(t, Date.now() + ADMIN_SESSION_TTL_MS);
+  next();
+}
+
 // 分配/返回 pid（用户进入页面时触发）
 app.post('/api/lottery/join', (req, res) => {
   const clientId = readClientId(req);
@@ -115,7 +166,7 @@ app.post('/api/lottery/join', (req, res) => {
     if (p) {
       // 回写 cookie，保持会话一致
       res.cookie('pid', String(p.pid), { httpOnly: true, maxAge: 7*24*3600*1000, sameSite: 'lax' });
-      return res.json({ pid: p.pid, participated: p.participated });
+      return res.json({ pid: p.pid, participated: p.participated, win: p.win === true });
     } else {
       // 映射已失效（例如被 reset-all 清空），清除陈旧映射
       clientIdToPid.delete(clientId);
@@ -130,7 +181,8 @@ app.post('/api/lottery/join', (req, res) => {
       participants.set(pid, existed);
       clientIdToPid.set(clientId, pid);
     }
-    return res.json({ pid, participated: participants.get(pid)!.participated });
+    const pr = participants.get(pid)!;
+    return res.json({ pid, participated: pr.participated, win: pr.win === true });
   }
 
   const newPid = allocatePid();
@@ -150,7 +202,7 @@ app.post('/api/lottery/join', (req, res) => {
     sameSite: 'lax'
   });
   
-  return res.json({ pid: newPid, participated: false });
+  return res.json({ pid: newPid, participated: false, win: false });
 });
 
 // 新API: 发牌
@@ -271,7 +323,7 @@ app.get('/api/lottery/config', (_req, res) => {
 // —— 管理端 ——
 
 // 活动状态控制
-app.post('/api/admin/set-state', (req, res) => {
+app.post('/api/admin/set-state', requireAdmin, (req, res) => {
   const { state } = req.body;
   if (['waiting', 'open', 'closed'].includes(state)) {
     const prevState = activityState;
@@ -285,7 +337,7 @@ app.post('/api/admin/set-state', (req, res) => {
 });
 
 // 新API: 配置更新 (支持 redCountMode 0|1|2|3)
-app.post('/api/lottery/config', (req, res) => {
+app.post('/api/lottery/config', requireAdmin, (req, res) => {
   const { redCountMode } = req.body;
   if ([0, 1, 2, 3].includes(Number(redCountMode))) {
     const prevMode = activityConfig.redCountMode;
@@ -299,7 +351,7 @@ app.post('/api/lottery/config', (req, res) => {
 });
 
 // 兼容旧API: 配置更新
-app.post('/api/admin/config', (req, res) => {
+app.post('/api/admin/config', requireAdmin, (req, res) => {
   const { hongzhongPercent, winRate, redCountMode } = req.body;
   
   if ([0, 1, 2, 3].includes(Number(redCountMode))) {
@@ -327,14 +379,14 @@ app.post('/api/admin/config', (req, res) => {
 
 // —— 概率配置（新接口，优先支持 mode，兼容 probability） ——
 // GET: 返回 { mode, probability }
-app.get('/api/lottery/admin/get-prob', (req, res) => {
+app.get('/api/lottery/admin/get-prob', requireAdmin, (req, res) => {
   const mode = activityConfig.redCountMode as 0|1|2|3;
   const probability = [0, 1/3, 2/3, 1][mode];
   res.json({ mode, probability });
 });
 
 // POST: 接收 { mode?:0|1|2|3, probability?:number }
-app.post('/api/lottery/admin/set-prob', (req, res) => {
+app.post('/api/lottery/admin/set-prob', requireAdmin, (req, res) => {
   const { mode, probability } = req.body || {};
 
   let nextMode: 0|1|2|3 | undefined;
@@ -357,7 +409,7 @@ app.post('/api/lottery/admin/set-prob', (req, res) => {
 });
 
 // 列表（简单返回内存数据）
-app.get('/api/admin/participants', (_req, res) => {
+app.get('/api/admin/participants', requireAdmin, (_req, res) => {
   const all = Array.from(participants.values())
     .sort((a, b) => a.pid - b.pid)
     .map(p => ({
@@ -383,7 +435,7 @@ app.get('/api/admin/participants', (_req, res) => {
 });
 
 // 单个重置
-app.post('/api/admin/reset/:pid', (req, res) => {
+app.post('/api/admin/reset/:pid', requireAdmin, (req, res) => {
   const pid = Number(req.params.pid);
   if (participants.has(pid)) {
     const existed = participants.get(pid)!;
@@ -404,7 +456,7 @@ app.post('/api/admin/reset/:pid', (req, res) => {
 });
 
 // 全量重置
-app.post('/api/admin/reset-all', (_req, res) => {
+app.post('/api/admin/reset-all', requireAdmin, (_req, res) => {
   participants.clear();
   nextPid = 0;
   rounds.clear(); // 清理所有轮次

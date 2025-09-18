@@ -14,7 +14,7 @@ export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {})
   if (typeof input === 'string' && input.startsWith('/')) {
     url = joinUrl(base, input);
   }
-  return fetch(url, { ...init, headers, credentials: init.credentials || 'include' });
+  return fetch(url, { ...init, headers, credentials: 'include', mode: 'cors' as any });
 }
 
 

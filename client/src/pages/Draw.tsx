@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import "./lottery.css";
 import { getClientId, shortId } from "../utils/clientId";
 import { useActivityStatus } from "../utils/useActivityStatus";
@@ -20,12 +20,81 @@ export default function DrawPage(){
   const slotsReadyRef = useRef(false);
   const [result, setResult] = useState<{open:boolean; win:boolean; title:string; desc:string}>({open:false, win:false, title:'', desc:''});
   const [toast, setToast] = useState<string>('');
+  const [assetsReady, setAssetsReady] = useState(false);
+  const [won, setWon] = useState(false);
+  // 首次进入时，从本地恢复“已中奖”标记（仅用于按钮状态展示）
+  useEffect(()=>{
+    try { if (localStorage.getItem('dm_won') === '1') setWon(true); } catch {}
+  },[]);
+  const [resolvedBack, setResolvedBack] = useState<string | null>(null);
+  const [resolvedRed, setResolvedRed] = useState<string | null>(null);
+  const [resolvedWhite, setResolvedWhite] = useState<string | null>(null);
+  const [resolvedWin, setResolvedWin] = useState<string | null>(null);
+
+  // 资源稳妥加载：用 BASE_URL 拼接为相对根路径，避免 new URL 基础不合法导致报错
+  const base = (import.meta as any).env?.BASE_URL ?? '/';
+  const backUrl  = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/back.png`, []);
+  const redUrl   = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/red.png`,  []);
+  const whiteUrl = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/white.png`,[]);
+  const winUrl   = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/win.png`,[]);
+
+  useEffect(()=>{
+    const FALLBACK_BACK = `data:image/svg+xml;utf8,`+
+      encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 260"><rect width="100%" height="100%" rx="18" fill="#17a673"/></svg>');
+    const FALLBACK_RED = `data:image/svg+xml;utf8,`+
+      encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 260"><rect width="100%" height="100%" rx="18" fill="#ffffff"/><circle cx="90" cy="130" r="52" fill="#e53935"/></svg>');
+    const FALLBACK_WHITE = `data:image/svg+xml;utf8,`+
+      encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 260"><rect width="100%" height="100%" rx="18" fill="#ffffff"/></svg>');
+    const FALLBACK_WIN = `data:image/svg+xml;utf8,`+
+      encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 260"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ffd1e6"/><stop offset="1" stop-color="#ffe6f2"/></linearGradient></defs><rect width="100%" height="100%" rx="18" fill="url(#g)"/></svg>');
+
+    const testLoad = (src:string) => new Promise<boolean>((resolve)=>{
+      const img = new Image(); img.onload = ()=>resolve(true); img.onerror = ()=>resolve(false); img.src = src;
+    });
+
+    const exts = ['png','webp','jpg','jpeg'];
+    const resolveOne = async (base:string, candidates:string[], fallback:string): Promise<string> => {
+      for (const name of candidates){
+        const url = `${String(base).replace(/\/+$/,'')}/mj/${name}`;
+        if (await testLoad(url)) return url;
+      }
+      return fallback;
+    };
+    const makeCandidates = (tokens: string[]): string[] => {
+      const names: string[] = [];
+      tokens.forEach(t => exts.forEach(ext => names.push(`${t}.${ext}`)));
+      return names;
+    };
+
+    (async ()=>{
+      const backResolved = await resolveOne((import.meta as any).env?.BASE_URL ?? '/', [
+        'back.png','back.webp','back.jpg','default.png','default.webp','default.jpg','背面.png'
+      ], FALLBACK_BACK);
+      const redResolved = await resolveOne((import.meta as any).env?.BASE_URL ?? '/', makeCandidates([
+        'red','hongzhong','HZ','RED','red_hz','red-红中','red红中','红中'
+      ]), FALLBACK_RED);
+      const whiteResolved = await resolveOne((import.meta as any).env?.BASE_URL ?? '/', makeCandidates([
+        'white','blank','baiban','WHITE','white_bb','white-白板','white白板','white白班','白板','白班'
+      ]), FALLBACK_WHITE);
+      const winResolved = await resolveOne((import.meta as any).env?.BASE_URL ?? '/', makeCandidates([
+        'win','WIN','winner','prize','reward','中奖','win_bg'
+      ]), FALLBACK_WIN);
+      setResolvedBack(backResolved); setResolvedRed(redResolved); setResolvedWhite(whiteResolved); setResolvedWin(winResolved); setAssetsReady(true);
+    })();
+  },[backUrl, redUrl, whiteUrl]);
 
   useEffect(()=>{
     (async ()=>{
       try {
         const r = await apiFetch('/api/lottery/join',{method:'POST'});
-        if (r.ok) setJoined(true);
+        if (r.ok) {
+          setJoined(true);
+          try { 
+            const data = await r.json();
+            if (data && data.win === true) { setWon(true); try{ localStorage.setItem('dm_won','1'); }catch{} }
+            if (data && data.participated === false) { setWon(false); try{ localStorage.removeItem('dm_won'); }catch{} }
+          } catch {}
+        }
       } catch {}
       refresh();
     })();
@@ -35,10 +104,18 @@ export default function DrawPage(){
   useEffect(()=>{
     (async ()=>{
       if (status==='start' && phase==='idle' && !joined) {
-        try{ const r = await apiFetch('/api/lottery/join',{method:'POST'}); if(r.ok) setJoined(true);}catch{}
+        try{ const r = await apiFetch('/api/lottery/join',{method:'POST'}); if(r.ok) { setJoined(true); try{ const data = await r.json(); if (data && data.win === true) { setWon(true); try{ localStorage.setItem('dm_won','1'); }catch{} } if (data && data.participated === false) { setWon(false); try{ localStorage.removeItem('dm_won'); }catch{} } } catch {} } }catch{}
       }
     })();
   },[status, phase, joined]);
+
+  // 当活动开始且本设备可抽（后台重置后），清理上一轮的“已中奖”标记
+  useEffect(()=>{
+    if (status==='start' && canDraw) {
+      setWon(false);
+      try { localStorage.removeItem('dm_won'); } catch {}
+    }
+  }, [status, canDraw]);
 
   // 管理端状态影响前端可玩性：start → 解锁下一轮；end/pause → 立即回到 idle
   useEffect(()=>{
@@ -83,18 +160,22 @@ export default function DrawPage(){
   }
 
   async function handleStart(){
+    if(!assetsReady) return; // 等图加载，避免正面未出导致“仍是背面色”
     if(!canDraw || phase!=='idle') return onBlocked();
     if(!joined){ try{ const r=await apiFetch('/api/lottery/join',{method:'POST'}); if(r.ok) setJoined(true);}catch{} }
+    // 保持 won，不在开始时清除；仅后台重置（join 返回 participated=false）时清
     setPhase('staging');
     // 初始化槽位
     if(!slotsReadyRef.current){ initSlotsFromLayout(); slotsReadyRef.current = true; }
-    // 1) 预演：展示“一红两白”，再翻回背面（关闭 relayout 干扰）
+    // 1) 预演：展示“一红两白（位置随机）”，从背面翻到正面，再翻回背面（关闭 relayout 干扰）
     ;(window as any).__REL_DISABLE__?.();
+    // 使用不依赖外部样式的图像资源，保证一定能翻
+    // 预演：随机一红两白
     const preview = makePreviewDeckOneRed();
     setCards(cs => cs.map((c, idx) => ({...c, face: preview[idx], flipped:true})));
     await sleep(600);
     setCards(cs => cs.map(c => ({...c, flipped:false})));
-    await sleep(400);
+    await sleep(600);
     // 2) 重叠→槽位洗牌→回位
     overlapCenter();
     await sleep(300);
@@ -142,6 +223,7 @@ export default function DrawPage(){
       z: 1
     })));
     const clickedIsWin = deck![pickIndex] === 'hongzhong';
+    if (clickedIsWin) { setWon(true); try { localStorage.setItem('dm_won','1'); } catch {} }
     setResult({
       open:true, win: clickedIsWin,
       title: clickedIsWin ? '中了！这波红中有排面' : '这次没中，但好运在路上',
@@ -183,13 +265,22 @@ export default function DrawPage(){
           </div>
         </div>
       </section>
-      <section className="dm-board glass" id="mahjong-board" aria-label="mahjong-board">
-        <div className="cards-wrap">
+      <section className="dm-board" id="mahjong-board" aria-label="mahjong-board">
+        <div className="dm-glass-overlay" aria-hidden="true" />
+        <div className="cards-wrap" style={{ perspective: '1200px', WebkitPerspective: '1200px' }}>
           {cards.map(c=> (
-            <button
+              <button
               key={c.id}
-              className={`card ${c.state} ${pickedId===c.id ? 'picked' : ''}`}
-              style={{ left:c.x, top:c.y, zIndex:c.z as any }}
+              className={`card tile ${c.state} ${pickedId===c.id ? 'picked' : ''}`}
+              style={{
+                left:c.x,
+                top:c.y,
+                zIndex: (c.flipped ? 99 : (c.z as any)) as any,
+                transform: c.flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                WebkitTransform: c.flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                transformStyle: 'preserve-3d',
+                WebkitTransformStyle: 'preserve-3d'
+              }}
               onClick={()=>{
                 // 活动暂停/结束：不触发任何提示
                 if (status !== 'start') return;
@@ -205,29 +296,65 @@ export default function DrawPage(){
               }}
               aria-label={`card-${c.id}`}
             >
-              <div className={`card-inner ${c.flipped ? 'is-flipped' : ''}`}>
-                <div className={`card-face front ${c.face || 'baiban'}`} />
-                <div className="card-face back" />
-              </div>
+              <img
+                alt="back"
+                draggable={false}
+                style={{ position:'absolute', inset:0 as any, width:'100%', height:'100%', objectFit:'cover', borderRadius:18 as any,
+                  backfaceVisibility:'visible' as any, WebkitBackfaceVisibility:'visible' as any,
+                  transform:'rotateY(0deg) translateZ(0.01px)',
+                  opacity: c.flipped ? 0 : 1, zIndex:1 as any }}
+                src={(won ? (resolvedWin ?? winUrl) : (resolvedBack ?? backUrl))}
+              />
+              <img
+                alt={c.face==='hongzhong' ? 'red' : 'white'}
+                draggable={false}
+                style={{ position:'absolute', inset:0 as any, width:'100%', height:'100%', objectFit:'cover', borderRadius:18 as any,
+                  backfaceVisibility:'visible' as any, WebkitBackfaceVisibility:'visible' as any,
+                  transform:'rotateY(180deg) translateZ(0.01px)', backgroundColor:'#fff',
+                  opacity: c.flipped ? 1 : 0, zIndex:2 as any }}
+                src={c.face==='hongzhong' ? (resolvedRed ?? redUrl) : (resolvedWhite ?? whiteUrl)}
+              />
             </button>
           ))}
-        </div>
+                  </div>
         <div className="dm-device-id-watermark">ID {shortId(cid)}</div>
+        <div className="dm-cta-inline">
+          <button
+            className={`dm-btn watermark ${won ? 'winner' : ''}`}
+            style={{maxWidth:'min(60vw,320px)'}}
+            disabled={(!won) && (!canDraw || phase!=='idle')}
+            onClick={() => {
+              if (won) {
+                setResult({
+                  open: true,
+                  win: true,
+                  title: '恭喜中奖',
+                  desc: '已翻中红中，请联系工作人员核销领取奖品。'
+                });
+                return;
+              }
+              handleStart();
+            }}
+          >
+            {status==='start'
+              ? (phase==='idle' ? '开始抽奖' : (!canDraw || phase==='locked' ? (won ? '已中奖' : '已参与') : '请选择'))
+              : (status==='pause' ? '活动暂停' : '活动已结束')}
+          </button>
+        </div>
       </section>
-      <section className="dm-cta">
-        <button className="dm-btn glass" disabled={!canDraw || phase!=='idle'} onClick={handleStart}>
-          {status==='start'
-            ? (phase==='idle' ? '开始抽奖' : (!canDraw || phase==='locked' ? '已参与' : '请选择'))
-            : (status==='pause' ? '活动暂停' : '活动已结束')}
-        </button>
-      </section>
-      <section className="dm-rules glass bordered">
-        <h3>参与条件：</h3>
-        <ul>
-          <li>单笔消费满 88 元，可获得一次抽奖机会。</li>
-          <li>三张麻将中抽中 “红中”，即可赢取限量托特包。</li>
-        </ul>
-        <div className="footnote">*由于环保袋数量有限，每日将限量抽取赠送，还请理解。</div>
+      <section className="dm-rules glass bordered xhs">
+        <div className="xhs-title"><span className="dot" />参与条件</div>
+        <div className="xhs-items">
+          <div className="xhs-item">
+            <span className="tag">活动门槛</span>
+            <span className="text">💳 单笔消费满 <b className="h-num">88</b> 元，即可获一次抽奖机会</span>
+          </div>
+          <div className="xhs-item">
+            <span className="tag tag-hot">抽中即送</span>
+            <span className="text">🀄 翻中 <b className="h-key">红中</b> ，赢取限量托特包 🎁</span>
+          </div>
+        </div>
+        <div className="footnote small">*由于环保袋数量有限，每日限量派送，敬请理解。</div>
       </section>
       {result.open && (
         <div className="modal-mask" onClick={closeModal}>
@@ -236,8 +363,8 @@ export default function DrawPage(){
             <h3>{result.title}</h3>
             <p className="modal-desc">{result.desc}</p>
             <button className="modal-btn" onClick={closeModal}>知道啦</button>
-          </div>
-        </div>
+      </div>
+    </div>
       )}
       {toast && (
         <div className="toast-wrap"><div className="toast">{toast}</div></div>
@@ -249,7 +376,12 @@ export default function DrawPage(){
 function sleep(ms:number){ return new Promise(r=>setTimeout(r,ms)); }
 
 // 工具：预演用 “一红两白”
-function makePreviewDeckOneRed(): Face[] { return ['hongzhong','baiban','baiban']; }
+function makePreviewDeckOneRed(): Face[] {
+  const idx = Math.floor(Math.random()*3);
+  const deck: Face[] = ['baiban','baiban','baiban'];
+  deck[idx] = 'hongzhong';
+  return deck;
+}
 
 // 工具：规范化服务端返回，强制“一红两白”且与点击一致
 function normalizeOneRedDeck(serverDeck: Face[] | undefined, pickIndex: number, win?: boolean): Face[] {

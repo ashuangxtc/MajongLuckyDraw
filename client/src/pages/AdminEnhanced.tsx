@@ -35,6 +35,9 @@ export default function AdminEnhanced() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(false)
   const [connected, setConnected] = useState(true)
+  const [authed, setAuthed] = useState<boolean | null>(null)
+  const [pwd, setPwd] = useState('')
+  const [authErr, setAuthErr] = useState('')
   const [hongzhongPercent, setHongzhongPercent] = useState([33])
   const [showProbabilityPanel, setShowProbabilityPanel] = useState(false)
 
@@ -62,11 +65,28 @@ export default function AdminEnhanced() {
   }
 
   useEffect(() => {
-    loadData()
-    // 每5秒刷新一次数据
-    const interval = setInterval(loadData, 5000)
+    // 先探测登录态
+    fetch('/api/admin/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(() => { setAuthed(true); loadData() })
+      .catch(() => setAuthed(false))
+    const interval = setInterval(() => { if (authed) loadData() }, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [authed])
+
+  const doLogin = async () => {
+    setAuthErr('')
+    try{
+      const r = await fetch('/api/admin/login', {
+        method:'POST', credentials:'include', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ password: pwd })
+      })
+      if(!r.ok){ const t = await r.text(); throw new Error(t || 'login failed') }
+      setAuthed(true)
+      setPwd('')
+      loadData()
+    }catch(e:any){ setAuthErr('登录失败，请检查密码或服务器'); }
+  }
 
   // 设置活动状态
   const setState = async (state: 'waiting' | 'open' | 'closed') => {
@@ -139,6 +159,30 @@ export default function AdminEnhanced() {
     })
   }
 
+  if (authed === false) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-6xl mx-auto">
+          <Card className="py-8 px-6 max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>管理员登录</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <input
+                type="password"
+                className="w-full border rounded px-3 py-2"
+                placeholder="请输入管理员密码"
+                value={pwd}
+                onChange={e=>setPwd(e.target.value)}
+              />
+              {authErr && <div className="text-red-500 text-sm">{authErr}</div>}
+              <Button className="w-full" onClick={doLogin}>登录</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
   if (!connected) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
