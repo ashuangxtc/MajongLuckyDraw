@@ -65,11 +65,18 @@ export default function AdminEnhanced() {
   }
 
   useEffect(() => {
-    // 先探测登录态（同域 Serverless /api）
-    fetch('/api/admin/me', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : Promise.reject(r))
-      .then(() => { setAuthed(true); loadData() })
-      .catch(() => setAuthed(false))
+    // 自动登录：先探测，失败则直接请求 /api/admin/login 设置会话
+    (async () => {
+      try {
+        const me = await fetch('/api/admin/me', { credentials: 'include' });
+        if (me.ok) { setAuthed(true); loadData(); return; }
+        const r = await fetch('/api/admin/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) });
+        if (r.ok) { setAuthed(true); loadData(); return; }
+        setAuthed(false);
+      } catch {
+        setAuthed(false);
+      }
+    })();
     const interval = setInterval(() => { if (authed) loadData() }, 5000)
     return () => clearInterval(interval)
   }, [authed])
@@ -160,23 +167,14 @@ export default function AdminEnhanced() {
   }
 
   if (authed === false) {
+    // 自动登录失败的兜底提示（不再显示密码输入框）
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-6xl mx-auto">
-          <Card className="py-8 px-6 max-w-md mx-auto">
-            <CardHeader>
-              <CardTitle>管理员登录</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <input
-                type="password"
-                className="w-full border rounded px-3 py-2"
-                placeholder="请输入管理员密码"
-                value={pwd}
-                onChange={e=>setPwd(e.target.value)}
-              />
-              {authErr && <div className="text-red-500 text-sm">{authErr}</div>}
-              <Button className="w-full" onClick={doLogin}>登录</Button>
+          <Card className="text-center py-12">
+            <CardContent>
+              <div className="text-gray-700 mb-2">正在进入后台…</div>
+              <Button onClick={loadData}>重试</Button>
             </CardContent>
           </Card>
         </div>
