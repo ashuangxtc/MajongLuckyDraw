@@ -32,11 +32,10 @@ export default function DrawPage(){
   const [resolvedWin, setResolvedWin] = useState<string | null>(null);
 
   // 资源稳妥加载：用 BASE_URL 拼接为相对根路径，避免 new URL 基础不合法导致报错
-  const base = (import.meta as any).env?.BASE_URL ?? '/';
-  const backUrl  = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/back.png`, []);
-  const redUrl   = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/red.png`,  []);
-  const whiteUrl = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/white.png`,[]);
-  const winUrl   = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/win.png`,[]);
+  const backUrl  = '/mj/back.png';
+  const redUrl   = '/mj/red.png';
+  const whiteUrl = '/mj/white.png';
+  const winUrl   = '/mj/win.png';
 
   useEffect(()=>{
     // 首屏后预热常用图片，提升翻转时首帧渲染命中率
@@ -69,16 +68,16 @@ export default function DrawPage(){
     };
 
     (async ()=>{
-      const backResolved = await resolveOne((import.meta as any).env?.BASE_URL ?? '/', [
+      const backResolved = await resolveOne('/', [
         'back.png','back.webp','back.jpg','default.png','default.webp','default.jpg','背面.png'
       ], FALLBACK_BACK);
-      const redResolved = await resolveOne((import.meta as any).env?.BASE_URL ?? '/', makeCandidates([
+      const redResolved = await resolveOne('/', makeCandidates([
         'red','hongzhong','HZ','RED','red_hz','red-红中','red红中','红中'
       ]), FALLBACK_RED);
-      const whiteResolved = await resolveOne((import.meta as any).env?.BASE_URL ?? '/', makeCandidates([
+      const whiteResolved = await resolveOne('/', makeCandidates([
         'white','blank','baiban','WHITE','white_bb','white-白板','white白板','white白班','白板','白班'
       ]), FALLBACK_WHITE);
-      const winResolved = await resolveOne((import.meta as any).env?.BASE_URL ?? '/', makeCandidates([
+      const winResolved = await resolveOne('/', makeCandidates([
         'win','WIN','winner','prize','reward','中奖','win_bg'
       ]), FALLBACK_WIN);
       setResolvedBack(backResolved); setResolvedRed(redResolved); setResolvedWhite(whiteResolved); setResolvedWin(winResolved); setAssetsReady(true);
