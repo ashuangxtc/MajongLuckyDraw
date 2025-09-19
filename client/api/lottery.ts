@@ -2,9 +2,17 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getState, setState } from './_utils/store';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  // 获取路径参数，支持查询参数方式
-  const { pathname, searchParams } = new URL(req.url!, `http://${req.headers.host}`);
-  let path = searchParams.get('path') || pathname.replace('/api/lottery', '');
+  // 从 URL 中提取路径
+  const url = new URL(req.url!, `http://${req.headers.host}`);
+  const fullPath = url.pathname;
+  
+  // 提取 /api/lottery 后面的路径
+  let path = '';
+  if (fullPath.startsWith('/api/lottery/')) {
+    path = '/' + fullPath.split('/api/lottery/')[1];
+  } else if (fullPath === '/api/lottery') {
+    path = '';
+  }
 
   if (path === '/status' && req.method === 'GET') {
     // 获取抽奖状态

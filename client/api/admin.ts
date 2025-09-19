@@ -3,9 +3,17 @@ import { createSessionToken, verifySessionToken, getSessionMaxAgeMs } from './_u
 import { getState, setState } from './_utils/store';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  // 获取路径参数，支持查询参数方式
-  const { pathname, searchParams } = new URL(req.url!, `http://${req.headers.host}`);
-  let path = searchParams.get('path') || pathname.replace('/api/admin', '');
+  // 从 URL 中提取路径
+  const url = new URL(req.url!, `http://${req.headers.host}`);
+  const fullPath = url.pathname;
+  
+  // 提取 /api/admin 后面的路径
+  let path = '';
+  if (fullPath.startsWith('/api/admin/')) {
+    path = '/' + fullPath.split('/api/admin/')[1];
+  } else if (fullPath === '/api/admin') {
+    path = '';
+  }
 
   // 所有管理员相关的API都不需要密码验证
   

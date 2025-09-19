@@ -2,9 +2,17 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getParticipants, resetOne, resetAll } from './_utils/adminStore';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  // 获取路径参数，支持查询参数方式
-  const { pathname, searchParams } = new URL(req.url!, `http://${req.headers.host}`);
-  let path = searchParams.get('path') || pathname.replace('/api/participants', '');
+  // 从 URL 中提取路径
+  const url = new URL(req.url!, `http://${req.headers.host}`);
+  const fullPath = url.pathname;
+  
+  // 提取 /api/participants 后面的路径
+  let path = '';
+  if (fullPath.startsWith('/api/participants/')) {
+    path = '/' + fullPath.split('/api/participants/')[1];
+  } else if (fullPath === '/api/participants') {
+    path = '';
+  }
 
   if (path === '' && req.method === 'GET') {
     // 获取参与者列表

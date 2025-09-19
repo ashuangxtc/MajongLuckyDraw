@@ -4,13 +4,13 @@
     { "src": "client/api/*.ts", "use": "@vercel/node" }
   ],
   "rewrites": [
-    { "source": "/api/admin/(.*)", "destination": "/client/api/admin?path=$1" },
-    { "source": "/api/lottery/(.*)", "destination": "/client/api/lottery?path=$1" },
-    { "source": "/api/participants/(.*)", "destination": "/client/api/participants?path=$1" },
+    { "source": "/api/admin/(.*)", "destination": "/client/api/admin" },
+    { "source": "/api/lottery/(.*)", "destination": "/client/api/lottery" },
+    { "source": "/api/participants/(.*)", "destination": "/client/api/participants" },
     { "source": "/api/admin", "destination": "/client/api/admin" },
     { "source": "/api/lottery", "destination": "/client/api/lottery" },
     { "source": "/api/participants", "destination": "/client/api/participants" },
-    { "source": "/(.*)", "destination": "/client/$1" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
