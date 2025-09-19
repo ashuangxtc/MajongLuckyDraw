@@ -2,8 +2,13 @@
   "name": "mahjong-lucky-draw",
   "version": "1.0.0",
   "scripts": {
+    
+
     "build": "cd client && npm install && npm run build",
     "start": "cd client && npm start"
+    
   },
   "dependencies": {}
-}
+
+  
+
