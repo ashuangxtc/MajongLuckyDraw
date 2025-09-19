@@ -128,6 +128,8 @@ export default function AdminEnhanced() {
   // 设置活动状态
   const setState = async (state: 'waiting' | 'open' | 'closed') => {
     console.log('设置状态为:', state);
+    setLoading(true);
+    
     try {
       const response = await fetch('/api/admin/set-state', {
         method: 'POST',
@@ -141,13 +143,25 @@ export default function AdminEnhanced() {
       if (response.ok) {
         const result = await response.json();
         console.log('状态设置结果:', result);
-        await loadData()
+        
+        // 强制更新数据，即使loadData失败也要更新本地状态
+        try {
+          await loadData();
+        } catch (loadError) {
+          console.error('重新加载数据失败:', loadError);
+          // 手动更新本地状态
+          if (data) {
+            setData({ ...data, state });
+          }
+        }
       } else {
         const error = await response.text();
         console.error('状态设置失败:', response.status, error);
       }
     } catch (error) {
       console.error('设置状态请求失败:', error)
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -316,21 +330,30 @@ export default function AdminEnhanced() {
               <div className="grid grid-cols-3 gap-3">
                 <Button
                   variant={data?.state === 'waiting' ? 'default' : 'outline'}
-                  onClick={() => setState('waiting')}
+                  onClick={() => {
+                    console.log('点击等待按钮');
+                    setState('waiting');
+                  }}
                   className="w-full"
                 >
                   等待开始
                 </Button>
                 <Button
                   variant={data?.state === 'open' ? 'default' : 'outline'}
-                  onClick={() => setState('open')}
+                  onClick={() => {
+                    console.log('点击开始按钮');
+                    setState('open');
+                  }}
                   className="w-full"
                 >
                   开始活动
                 </Button>
                 <Button
                   variant={data?.state === 'closed' ? 'default' : 'outline'}
-                  onClick={() => setState('closed')}
+                  onClick={() => {
+                    console.log('点击结束按钮');
+                    setState('closed');
+                  }}
                   className="w-full"
                 >
                   结束活动

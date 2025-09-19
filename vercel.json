@@ -1,4 +1,25 @@
 {
+  "functions": {
+    "api/admin.ts": {
+      "runtime": "@vercel/node"
+    },
+    "api/lottery.ts": {
+      "runtime": "@vercel/node"
+    },
+    "api/participants.ts": {
+      "runtime": "@vercel/node"
+    }
+  },
+  "builds": [
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "buildCommand": "npm run build",
+        "distDir": "dist"
+      }
+    }
+  ],
   "rewrites": [
     {
       "source": "/((?!api/.*).*)",

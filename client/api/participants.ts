@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getParticipants, resetOne, resetAll } from './_utils/adminStore';
+import { getState } from './_utils/store';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   // 从 URL 中提取路径
@@ -17,7 +18,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   if (path === '' && req.method === 'GET') {
     // 获取参与者列表和活动状态
     const participants = getParticipants();
-    const { getState } = require('./_utils/store');
     const st = getState();
     
     // 映射内部状态到前端期望的状态
