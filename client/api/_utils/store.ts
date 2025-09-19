@@ -9,12 +9,15 @@ export interface State {
   participants: Set<string>;
   // 前端展示固定三张：两白一红等
   pattern: Pattern;
+  // 红中张数模式：0-3张
+  redCountMode: number;
 }
 
 const state: State = {
   phase: 'idle',
   participants: new Set(),
   pattern: 'ONE_RED',
+  redCountMode: 1,
 };
 
 export function getState() { return state; }
@@ -24,6 +27,12 @@ export function resetState() {
   state.startedAt = undefined;
   state.participants.clear();
   state.pattern = 'ONE_RED';
+  state.redCountMode = 1;
+}
+
+// 添加 setState 函数
+export function setState(newState: Partial<State>) {
+  Object.assign(state, newState);
 }
 
 // 将 pattern 映射为 3 张牌（不含位置信息，前端洗牌/位置自己处理）

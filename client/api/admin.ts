@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createSessionToken, verifySessionToken, getSessionMaxAgeMs } from './_utils/auth';
-import { getState } from './_utils/store';
+import { getState, setState } from './_utils/store';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   // 获取路径参数，支持查询参数方式
@@ -40,7 +40,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
   if (path === '/set-state' && req.method === 'POST') {
     // 设置活动状态
-    const st = getState();
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
       const next = String(body?.state || '');
@@ -49,10 +48,17 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
       }
       // 兼容你的前后端命名：waiting->idle, open->ready, closed->locked
       const map: Record<string,string> = { waiting:'idle', open:'ready', paused:'paused', closed:'locked' };
-      (st as any).phase = (map[next] || next) as any;
-      if ((st as any).phase === 'idle') (st as any).startedAt = undefined;
-      if ((st as any).phase === 'ready') (st as any).startedAt = Date.now();
-      return res.status(200).json({ ok: true, phase: st.phase });
+      const phase = (map[next] || next) as any;
+      
+      if (phase === 'idle') {
+        setState({ phase, startedAt: undefined });
+      } else if (phase === 'ready') {
+        setState({ phase, startedAt: Date.now() });
+      } else {
+        setState({ phase });
+      }
+      
+      return res.status(200).json({ ok: true, phase });
     } catch (e: any) {
       return res.status(500).json({ ok: false, error: e?.message || 'INTERNAL_ERROR' });
     }

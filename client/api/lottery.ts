@@ -25,9 +25,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ ok: false, error: 'INVALID_RED_COUNT_MODE' });
       }
 
-      const st = getState();
-      (st as any).redCountMode = redCountMode;
-      setState(st);
+      setState({ redCountMode });
       
       return res.status(200).json({ ok: true, redCountMode });
     } catch (e: any) {
@@ -43,35 +41,25 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
   if (path === '/start' && req.method === 'POST') {
     // 开始抽奖
-    const st = getState();
-    (st as any).phase = 'ready';
-    (st as any).startedAt = Date.now();
-    setState(st);
+    setState({ phase: 'ready', startedAt: Date.now() });
     return res.status(200).json({ ok: true });
   }
 
   if (path === '/pause' && req.method === 'POST') {
     // 暂停抽奖
-    const st = getState();
-    (st as any).phase = 'paused';
-    setState(st);
+    setState({ phase: 'paused' });
     return res.status(200).json({ ok: true });
   }
 
   if (path === '/end' && req.method === 'POST') {
     // 结束抽奖
-    const st = getState();
-    (st as any).phase = 'locked';
-    setState(st);
+    setState({ phase: 'locked' });
     return res.status(200).json({ ok: true });
   }
 
   if (path === '/reset' && req.method === 'POST') {
     // 重置抽奖
-    const st = getState();
-    (st as any).phase = 'idle';
-    (st as any).startedAt = undefined;
-    setState(st);
+    setState({ phase: 'idle', startedAt: undefined });
     return res.status(200).json({ ok: true });
   }
 
