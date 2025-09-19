@@ -7,8 +7,18 @@
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 .dm-root{
-  min-height:100vh;background: linear-gradient(120deg,#f6f7fb,#f0e9ff 30%,#eef7ff);
-  color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui;
+  min-height:100vh;
+  /* 背景图优先 WebP，回退到现有 JPG；与渐变叠加 */
+  background-image: linear-gradient(120deg,#f6f7fb,#f0e9ff 30%,#eef7ff),
+    image-set(
+      url('/mj/bg.webp') type('image/webp') 1x,
+      url('/images/mahjong/background/dreammore-bg.jpg') type('image/jpeg') 1x
+    );
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui;
   display:flex;flex-direction:column;gap:20px;align-items:center;padding:24px 16px;
 }
 .glass{backdrop-filter: blur(16px) saturate(140%);-webkit-backdrop-filter: blur(16px) saturate(140%);background: var(--glass-bg);border: 1px solid var(--glass-brd);border-radius: 24px;box-shadow: 0 10px 30px rgba(0,0,0,.06), inset 0 1px 0 rgba(255,255,255,.2)}
@@ -94,6 +104,12 @@ html,body,#root{height:100%}
 .face-back{transform:rotateY(0)}
 .face-front{transform:rotateY(180deg)}
 .card.picked{transform:translateY(-6px) scale(1.06);transition:transform .2s ease}
+
+/* GPU 友好：与现有 .card/.face 并存，覆盖到 .tile 命名空间（按钮上已有 .tile 类） */
+.tile{will-change:transform,opacity;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:translateZ(0);transform-style:preserve-3d;-webkit-transform-style:preserve-3d;transition:transform .4s ease}
+.tile.is-flipped{transform:rotateY(180deg)}
+.tile-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.tile-back{transform:rotateY(180deg)}
 
 /* modal (glass) */
 .modal-mask{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)}

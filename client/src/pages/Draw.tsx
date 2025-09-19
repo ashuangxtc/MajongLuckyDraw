@@ -39,6 +39,8 @@ export default function DrawPage(){
   const winUrl   = useMemo(()=> `${String(base).replace(/\/+$/,'')}/mj/win.png`,[]);
 
   useEffect(()=>{
+    // 首屏后预热常用图片，提升翻转时首帧渲染命中率
+    ['/mj/white.png','/mj/back.png','/mj/red.png','/mj/win.png'].forEach(src=>{ const i=new Image(); i.decoding='async'; i.loading='eager'; i.src=src; });
     const FALLBACK_BACK = `data:image/svg+xml;utf8,`+
       encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 260"><rect width="100%" height="100%" rx="18" fill="#17a673"/></svg>');
     const FALLBACK_RED = `data:image/svg+xml;utf8,`+

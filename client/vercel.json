@@ -6,6 +6,20 @@
       { "source": "/assets/:path*", "destination": "/assets/:path*" },
       { "source": "/:file(.*\\.(?:js|css|map|png|jpg|jpeg|gif|svg|ico|txt|json|webp|woff2?|ttf))", "destination": "/:file" },
       { "source": "/(.*)", "destination": "/" }
-    ]
+    ],
+  "headers": [
+    {
+      "source": "/(.*)\\.(png|jpg|jpeg|webp|gif|svg)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/mj/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
   }
   
