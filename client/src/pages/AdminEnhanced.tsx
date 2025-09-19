@@ -127,6 +127,7 @@ export default function AdminEnhanced() {
 
   // 设置活动状态
   const setState = async (state: 'waiting' | 'open' | 'closed') => {
+    console.log('设置状态为:', state);
     try {
       const response = await fetch('/api/admin/set-state', {
         method: 'POST',
@@ -135,11 +136,18 @@ export default function AdminEnhanced() {
         body: JSON.stringify({ state })
       })
 
+      console.log('状态设置响应:', response.status, response.ok);
+      
       if (response.ok) {
+        const result = await response.json();
+        console.log('状态设置结果:', result);
         await loadData()
+      } else {
+        const error = await response.text();
+        console.error('状态设置失败:', response.status, error);
       }
     } catch (error) {
-      console.error('设置状态失败:', error)
+      console.error('设置状态请求失败:', error)
     }
   }
 

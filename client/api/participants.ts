@@ -15,9 +15,27 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (path === '' && req.method === 'GET') {
-    // 获取参与者列表
+    // 获取参与者列表和活动状态
     const participants = getParticipants();
-    return res.status(200).json(participants);
+    const { getState } = require('./_utils/store');
+    const st = getState();
+    
+    // 映射内部状态到前端期望的状态
+    const stateMap: Record<string, string> = {
+      'idle': 'waiting',
+      'ready': 'open', 
+      'paused': 'paused',
+      'locked': 'closed'
+    };
+    
+    return res.status(200).json({
+      items: participants,
+      participants: participants,
+      state: stateMap[st.phase] || 'waiting',
+      config: {
+        hongzhongPercent: (st.redCountMode || 1) * 25 // 转换红中张数为百分比
+      }
+    });
   }
 
   if (path === '/reset-all' && req.method === 'POST') {

@@ -55,12 +55,19 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
       const next = String(body?.state || '');
+      
+      console.log('设置状态请求:', { next, body });
+      
       if (!['waiting','open','closed','ready','paused','locked'].includes(next)) {
+        console.log('无效状态:', next);
         return res.status(400).json({ ok: false, error: 'INVALID_STATE' });
       }
+      
       // 兼容你的前后端命名：waiting->idle, open->ready, closed->locked
       const map: Record<string,string> = { waiting:'idle', open:'ready', paused:'paused', closed:'locked' };
       const phase = (map[next] || next) as any;
+      
+      console.log('映射后的状态:', { next, phase });
       
       if (phase === 'idle') {
         setState({ phase, startedAt: undefined });
@@ -70,8 +77,10 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
         setState({ phase });
       }
       
-      return res.status(200).json({ ok: true, phase });
+      console.log('状态设置成功:', phase);
+      return res.status(200).json({ ok: true, phase, originalState: next });
     } catch (e: any) {
+      console.error('状态设置错误:', e);
       return res.status(500).json({ ok: false, error: e?.message || 'INTERNAL_ERROR' });
     }
   }
