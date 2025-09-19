@@ -10,7 +10,14 @@ export type Participant = {
 }
 
 function withBase(path: string, base?: string) {
-  const envBase = (typeof import !== 'undefined' ? (import.meta as any)?.env?.VITE_API_BASE : '') || '';
+  let envBase = '' as string;
+  try {
+    // Vite runtime
+    envBase = (import.meta as any)?.env?.VITE_API_BASE || '';
+  } catch {
+    // Non-Vite or build-time
+    envBase = (typeof process !== 'undefined' ? (process as any)?.env?.VITE_API_BASE : '') || '';
+  }
   const b = (base || envBase || '').replace(/\/+$/, '');
   if (!path.startsWith('/')) path = '/' + path;
   return b ? `${b}${path}` : path;
