@@ -250,7 +250,15 @@ export default function DrawPage(){
     <main className="dm-root">
       <header className="dm-hero glass">
         <div className="dm-brand">
-          <img src="/images/logo/dreammore-logo.png" alt="Dreammore Logo" className="dm-logo" />
+          <img
+            src="/images/logo/dreammore-logo.png"
+            alt="Dreammore Logo"
+            className="dm-logo"
+            onError={(e)=>{
+              const svg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="100%" height="100%" rx="8" fill="#ffe3ee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="12" fill="#e24e7f">DREAMMORE</text></svg>');
+              (e.currentTarget as HTMLImageElement).src = `data:image/svg+xml;utf8,${svg}`;
+            }}
+          />
           <h1>DREAMMORE 小游戏</h1>
         </div>
       </header>
