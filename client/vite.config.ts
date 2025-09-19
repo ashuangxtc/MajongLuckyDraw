@@ -10,14 +10,17 @@ export default defineConfig({
   base: '/',
   build: { 
     outDir: 'dist',
-    rollupOptions: {
-      external: [],
+    commonjsOptions: {
+      transformMixedEsModules: true
     }
   },
   resolve: {
     alias: {
-      '@shared': path.resolve(__dirname, '../shared'),
+      '@shared': path.resolve(__dirname, './src/shared'),
       '@': path.resolve(__dirname, './src')
     }
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom']
   }
 });
