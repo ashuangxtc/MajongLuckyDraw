@@ -4,7 +4,7 @@ import { verifySessionToken } from '../_utils/auth';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') { res.setHeader('Allow','POST'); return res.status(405).end('Method Not Allowed'); }
-  if (!verifySessionToken((req.cookies as any)?.admin_session)) { return res.status(401).json({ ok:false, error:'ADMIN_REQUIRED' }); }
+  // 移除会话验证 - 直接通过
   const body = typeof req.body==='string' ? JSON.parse(req.body) : (req.body||{});
   const pid = Number(body?.pid);
   if (!Number.isFinite(pid)) return res.status(400).json({ ok:false, error:'INVALID_PID' });

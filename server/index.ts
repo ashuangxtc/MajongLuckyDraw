@@ -108,12 +108,9 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// 管理员登录/登出/状态
+// 管理员登录/登出/状态 - 无密码验证
 app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body || {};
-  if (String(password || '') !== String(ADMIN_PASSWORD)) {
-    return res.status(401).json({ ok:false, error:'INVALID_PASSWORD' });
-  }
+  // 直接生成 session token，无需密码验证
   const token = crypto.randomUUID();
   const expiresAt = Date.now() + ADMIN_SESSION_TTL_MS;
   adminSessions.set(token, expiresAt);
@@ -141,16 +138,7 @@ app.get('/api/admin/me', (req, res) => {
 });
 
 function requireAdmin(req: Request, res: Response, next: NextFunction){
-  const t = req.cookies?.admin_session as string | undefined;
-  if (!t || !adminSessions.has(t)) return res.status(401).json({ ok:false, error:'ADMIN_REQUIRED' });
-  const expiresAt = adminSessions.get(t)!;
-  if (Date.now() > expiresAt) {
-    adminSessions.delete(t);
-    res.clearCookie('admin_session');
-    return res.status(401).json({ ok:false, error:'SESSION_EXPIRED' });
-  }
-  // 滑动续期：访问刷新过期时间
-  adminSessions.set(t, Date.now() + ADMIN_SESSION_TTL_MS);
+  // 移除会话验证，直接通过
   next();
 }
 

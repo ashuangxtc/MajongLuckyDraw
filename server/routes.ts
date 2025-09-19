@@ -28,13 +28,7 @@ let lotteryConfig = {
 
 // 管理员身份验证中间件
 function requireAdmin(req: any, res: any, next: any) {
-  const adminPassword = req.headers['x-admin-password'];
-  const authHeader = req.headers['authorization'];
-  const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  
-  if (adminPassword !== 'admin123' && bearerToken !== 'admin123') {
-    return res.status(401).json({ ok: false, msg: 'unauthorized' });
-  }
+  // 移除密码验证，直接通过
   next();
 }
 

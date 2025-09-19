@@ -8,9 +8,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).send('Method Not Allowed');
   }
 
-  if (!verifySessionToken((req.cookies as any)?.admin_session as string | undefined)) {
-    return res.status(401).json({ ok: false, error: 'ADMIN_REQUIRED' });
-  }
+  // 移除会话验证 - 直接通过
 
   const st = getState();
   try {
