@@ -373,6 +373,3 @@ pnpm check
   - 保留原“*由于环保袋数量有限，每日限量派送*”的脚注，语气更轻量。
 
   "Trigger redeploy"
-
-
-  "Trigger redeploy"
