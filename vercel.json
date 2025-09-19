@@ -1,33 +1,4 @@
 {
-  "builds": [
-    {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "buildCommand": "npm run build",
-        "distDir": "dist"
-      }
-    }
-  ],
-  "functions": {
-    "client/api/admin.ts": {
-      "runtime": "@vercel/node"
-    },
-    "client/api/lottery.ts": {
-      "runtime": "@vercel/node"
-    },
-    "client/api/participants.ts": {
-      "runtime": "@vercel/node"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/client/api/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/client/dist/index.html"
-    }
-  ]
+  "buildCommand": "npm --prefix client install && npm --prefix client run build",
+  "outputDirectory": "client/dist"
 }
