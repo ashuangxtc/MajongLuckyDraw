@@ -1,14 +1,17 @@
 {
   "name": "mahjong-lucky-draw",
   "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
-    
-
-    "build": "cd client && npm install && npm run build",
-    "start": "cd client && npm start"
-    
+    "dev:web": "npm --prefix client run dev",
+    "build": "npm --prefix client install && npm --prefix client run build",
+    "start": "npm --prefix client run preview"
   },
   "dependencies": {}
+}
 
   
 
