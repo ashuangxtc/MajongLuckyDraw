@@ -131,14 +131,6 @@ export default function AdminEnhanced() {
     setLoading(true);
     
     try {
-      // 先测试简单的 API
-      console.log('测试 API 连接...');
-      const testResponse = await fetch('/api/test', {
-        method: 'GET'
-      });
-      console.log('测试 API 响应:', testResponse.status, await testResponse.json());
-      
-      // 然后调用状态设置 API
       console.log('调用状态设置 API...');
       const response = await fetch('/api/admin/set-state', {
         method: 'POST',
