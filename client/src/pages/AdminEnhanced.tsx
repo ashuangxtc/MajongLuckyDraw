@@ -66,16 +66,32 @@ export default function AdminEnhanced() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [participantsRes, statusRes] = await Promise.all([
-        fetchParticipants(),
-        fetch('/api/lottery/status', { credentials: 'include' }).then(r => r.json())
-      ])
+      console.log('开始加载数据...')
+      
+      // 分别处理每个请求，避免其中一个失败影响整体
+      let participantsRes = { participants: [], config: { hongzhongPercent: 50 } };
+      let statusRes = { stats: { total: 0, won: 0 } };
+      
+      try {
+        participantsRes = await fetchParticipants();
+        console.log('参与者数据:', participantsRes)
+      } catch (e) {
+        console.error('获取参与者数据失败:', e);
+      }
+      
+      try {
+        const response = await fetch('/api/lottery/status', { credentials: 'include' });
+        if (response.ok) {
+          statusRes = await response.json();
+          console.log('状态数据:', statusRes)
+        }
+      } catch (e) {
+        console.error('获取状态数据失败:', e);
+      }
 
-      console.log('参与者数据:', participantsRes)
-      console.log('状态数据:', statusRes)
       setData(participantsRes)
-      setStats(statusRes.stats)
-      setHongzhongPercent([participantsRes.config.hongzhongPercent])
+      setStats(statusRes.stats || { total: 0, won: 0 })
+      setHongzhongPercent([participantsRes.config?.hongzhongPercent || 50])
       setConnected(true)
     } catch (error) {
       console.error('加载数据失败:', error)
@@ -86,21 +102,14 @@ export default function AdminEnhanced() {
   }
 
   useEffect(() => {
-    // 自动登录：先探测，失败则直接请求 /api/admin/login 设置会话
-    (async () => {
-      try {
-        const me = await fetch('/api/admin/me', { credentials: 'include' });
-        if (me.ok) { setAuthed(true); loadData(); return; }
-        const r = await fetch('/api/admin/login', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) });
-        if (r.ok) { setAuthed(true); loadData(); return; }
-        setAuthed(false);
-      } catch {
-        setAuthed(false);
-      }
-    })();
-    const interval = setInterval(() => { if (authed) loadData() }, 5000)
+    // 简化：直接设置为已认证，无需密码验证
+    console.log('AdminEnhanced mounted, setting authed to true');
+    setAuthed(true);
+    loadData();
+    
+    const interval = setInterval(() => { loadData() }, 5000)
     return () => clearInterval(interval)
-  }, [authed])
+  }, [])
 
   const doLogin = async () => {
     setAuthErr('')

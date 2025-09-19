@@ -7,6 +7,8 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   const url = new URL(req.url!, `http://${req.headers.host}`);
   const fullPath = url.pathname;
   
+  console.log('Admin API called:', { fullPath, method: req.method });
+  
   // 提取 /api/admin 后面的路径
   let path = '';
   if (fullPath.startsWith('/api/admin/')) {
@@ -14,6 +16,8 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   } else if (fullPath === '/api/admin') {
     path = '';
   }
+  
+  console.log('Extracted path:', path);
 
   // 所有管理员相关的API都不需要密码验证
   

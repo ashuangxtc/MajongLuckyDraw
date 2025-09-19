@@ -19,7 +19,11 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     const st = getState();
     return res.status(200).json({
       open: st.phase === 'ready',
-      redCountMode: st.redCountMode || 1
+      redCountMode: st.redCountMode || 1,
+      stats: {
+        total: st.participants.size,
+        won: 0  // 简化版本，暂时返回0
+      }
     });
   }
 
