@@ -8,6 +8,9 @@
     },
     "api/participants.ts": {
       "runtime": "@vercel/node"
+    },
+    "api/test.ts": {
+      "runtime": "@vercel/node"
     }
   },
   "builds": [

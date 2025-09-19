@@ -131,6 +131,15 @@ export default function AdminEnhanced() {
     setLoading(true);
     
     try {
+      // 先测试简单的 API
+      console.log('测试 API 连接...');
+      const testResponse = await fetch('/api/test', {
+        method: 'GET'
+      });
+      console.log('测试 API 响应:', testResponse.status, await testResponse.json());
+      
+      // 然后调用状态设置 API
+      console.log('调用状态设置 API...');
       const response = await fetch('/api/admin/set-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,20 +148,23 @@ export default function AdminEnhanced() {
       })
 
       console.log('状态设置响应:', response.status, response.ok);
+      console.log('响应头:', [...response.headers.entries()]);
       
       if (response.ok) {
         const result = await response.json();
         console.log('状态设置结果:', result);
         
-        // 强制更新数据，即使loadData失败也要更新本地状态
+        // 手动更新本地状态
+        if (data) {
+          console.log('更新本地状态从', data.state, '到', state);
+          setData({ ...data, state });
+        }
+        
+        // 然后重新加载数据
         try {
           await loadData();
         } catch (loadError) {
           console.error('重新加载数据失败:', loadError);
-          // 手动更新本地状态
-          if (data) {
-            setData({ ...data, state });
-          }
         }
       } else {
         const error = await response.text();
@@ -361,6 +373,9 @@ export default function AdminEnhanced() {
               </div>
               <div className="text-sm text-gray-600">
                 当前状态：<span className="font-semibold">{getStateText(data?.state || 'waiting')}</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                调试信息: {JSON.stringify({ state: data?.state, connected, loading })}
               </div>
             </CardContent>
           </Card>
