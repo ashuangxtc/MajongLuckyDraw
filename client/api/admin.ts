@@ -1,89 +1,45 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createSessionToken, verifySessionToken, getSessionMaxAgeMs } from './_utils/auth';
-import { getState, setState } from './_utils/store';
+
+// 简单的内存状态存储
+let gameState: 'waiting' | 'open' | 'closed' = 'waiting';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  // 从 URL 中提取路径
   const url = new URL(req.url!, `http://${req.headers.host}`);
-  const fullPath = url.pathname;
-  
-  console.log('Admin API called:', { fullPath, method: req.method });
-  
-  // 提取 /api/admin 后面的路径
-  let path = '';
-  if (fullPath.startsWith('/api/admin/')) {
-    path = '/' + fullPath.split('/api/admin/')[1];
-  } else if (fullPath === '/api/admin') {
-    path = '';
-  }
-  
-  console.log('Extracted path:', path);
+  const path = url.pathname.replace('/api/admin', '') || '/';
 
-  // 所有管理员相关的API都不需要密码验证
-  
-  if (path === '/login' && req.method === 'POST') {
-    // 登录API - 无需密码验证，直接签发token
-    try {
-      const existing = (req.cookies as any)?.admin_session as string | undefined;
-      if (verifySessionToken(existing)) {
-        res.setHeader('Set-Cookie', `admin_session=${existing}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(getSessionMaxAgeMs()/1000)}`);
-        return res.status(200).json({ ok: true });
-      }
-      const token = createSessionToken();
-      res.setHeader('Set-Cookie', `admin_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(getSessionMaxAgeMs()/1000)}`);
-      return res.status(200).json({ ok: true });
-    } catch (e: any) {
-      return res.status(500).json({ ok: false, error: e?.message || 'INTERNAL_ERROR' });
-    }
-  }
+  console.log('Admin API called:', { path, method: req.method });
 
-  if (path === '/logout' && req.method === 'POST') {
-    // 登出API
-    res.setHeader('Set-Cookie', `admin_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
-    return res.status(200).json({ ok: true });
-  }
-
-  if (path === '/me' && req.method === 'GET') {
-    // 获取当前用户信息 - 直接返回成功
-    const token = (req.cookies as any)?.admin_session as string | undefined;
-    res.setHeader('Set-Cookie', `admin_session=${token || 'dummy'}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(getSessionMaxAgeMs()/1000)}`);
-    return res.status(200).json({ ok: true });
-  }
-
+  // 设置状态
   if (path === '/set-state' && req.method === 'POST') {
-    // 设置活动状态
     try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-      const next = String(body?.state || '');
+      const { state } = req.body || {};
       
-      console.log('设置状态请求:', { next, body });
-      
-      if (!['waiting','open','closed','ready','paused','locked'].includes(next)) {
-        console.log('无效状态:', next);
-        return res.status(400).json({ ok: false, error: 'INVALID_STATE' });
+      if (!['waiting', 'open', 'closed'].includes(state)) {
+        return res.status(400).json({ error: 'Invalid state' });
       }
+
+      gameState = state;
+      console.log('游戏状态已更新为:', state);
       
-      // 兼容你的前后端命名：waiting->idle, open->ready, closed->locked
-      const map: Record<string,string> = { waiting:'idle', open:'ready', paused:'paused', closed:'locked' };
-      const phase = (map[next] || next) as any;
-      
-      console.log('映射后的状态:', { next, phase });
-      
-      if (phase === 'idle') {
-        setState({ phase, startedAt: undefined });
-      } else if (phase === 'ready') {
-        setState({ phase, startedAt: Date.now() });
-      } else {
-        setState({ phase });
-      }
-      
-      console.log('状态设置成功:', phase);
-      return res.status(200).json({ ok: true, phase, originalState: next });
-    } catch (e: any) {
-      console.error('状态设置错误:', e);
-      return res.status(500).json({ ok: false, error: e?.message || 'INTERNAL_ERROR' });
+      return res.status(200).json({ 
+        ok: true, 
+        state: gameState,
+        message: `状态已更新为 ${state}` 
+      });
+    } catch (error) {
+      console.error('设置状态时出错:', error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
   }
 
-  return res.status(404).json({ ok: false, error: 'NOT_FOUND' });
+  // 获取状态
+  if (path === '/status' && req.method === 'GET') {
+    return res.status(200).json({ 
+      state: gameState,
+      timestamp: Date.now() 
+    });
+  }
+
+  // 其他路径返回404
+  return res.status(404).json({ error: 'Not found' });
 }
