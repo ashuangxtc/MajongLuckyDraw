@@ -9,14 +9,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    // 兼容字段名 password / pwd
-    const password = String((body?.password ?? body?.pwd ?? '')).trim();
-    // 兼容环境变量 ADMIN_PASSWORD / ADMIN_PWD
-    const expected = String((process.env.ADMIN_PASSWORD || process.env.ADMIN_PWD || 'Dreammore123')).trim();
-
-    if (password !== expected) {
-      return res.status(401).json({ ok: false, error: 'INVALID_PASSWORD' });
-    }
+    // 临时关闭密码校验：无论输入什么都直接签发会话
 
     // 已有未过期会话则复用
     const existing = (req.cookies as any)?.admin_session as string | undefined;
