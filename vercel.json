@@ -17,11 +17,8 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/api/:match*", "destination": "/api/:match*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
