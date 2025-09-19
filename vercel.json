@@ -1,7 +1,11 @@
 {
   "builds": [
     { "src": "client/package.json", "use": "@vercel/static-build", "config": { "distDir": "client/dist" } },
-    { "src": "api/**/*.ts", "use": "@vercel/node" }
+    { "src": "client/api/**/*.ts", "use": "@vercel/node" }
+  ],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/client/api/$1" },
+    { "source": "/(.*)", "destination": "/client/$1" }
   ],
   "headers": [
     {
