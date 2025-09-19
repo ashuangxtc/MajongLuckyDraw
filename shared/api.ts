@@ -9,8 +9,15 @@ export type Participant = {
   drawAt?: number
 }
 
+function withBase(path: string, base?: string) {
+  const envBase = (typeof import !== 'undefined' ? (import.meta as any)?.env?.VITE_API_BASE : '') || '';
+  const b = (base || envBase || '').replace(/\/+$/, '');
+  if (!path.startsWith('/')) path = '/' + path;
+  return b ? `${b}${path}` : path;
+}
+
 export async function join(base = ''): Promise<JoinResp> {
-  const r = await fetch(`${base}/api/lottery/join`, { 
+  const r = await fetch(withBase('/api/lottery/join', base), { 
     method: 'POST', 
     credentials: 'include' 
   })
@@ -19,7 +26,7 @@ export async function join(base = ''): Promise<JoinResp> {
 }
 
 export async function draw(choice: number, base = ''): Promise<DrawResp> {
-  const r = await fetch(`${base}/api/lottery/draw`, {
+  const r = await fetch(withBase('/api/lottery/draw', base), {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -30,7 +37,7 @@ export async function draw(choice: number, base = ''): Promise<DrawResp> {
 }
 
 export async function getParticipants(base = '') {
-  const r = await fetch(`${base}/api/admin/participants`, { 
+  const r = await fetch(withBase('/api/admin/participants', base), { 
     credentials: 'include' 
   })
   if (!r.ok) throw new Error('get participants failed')
@@ -38,7 +45,7 @@ export async function getParticipants(base = '') {
 }
 
 export async function resetParticipant(pid: number, base = '') {
-  const r = await fetch(`${base}/api/admin/reset/${pid}`, { 
+  const r = await fetch(withBase(`/api/admin/reset/${pid}`, base), { 
     method: 'POST', 
     credentials: 'include' 
   })
@@ -47,7 +54,7 @@ export async function resetParticipant(pid: number, base = '') {
 }
 
 export async function resetAll(base = '') {
-  const r = await fetch(`${base}/api/admin/reset-all`, { 
+  const r = await fetch(withBase('/api/admin/reset-all', base), { 
     method: 'POST', 
     credentials: 'include' 
   })
@@ -56,22 +63,20 @@ export async function resetAll(base = '') {
 }
 
 export async function health(base = '') {
-  const r = await fetch(`${base}/api/health`, { credentials: 'include' })
+  const r = await fetch(withBase('/api/health', base), { credentials: 'include' })
   if (!r.ok) throw new Error('health check failed')
   return r.json()
 }
 
 export async function getGameStatus(base = '') {
-  const url = base ? `${base}/api/lottery/status` : '/api/lottery/status'
-  const r = await fetch(url, { credentials: 'include' })
+  const r = await fetch(withBase('/api/lottery/status', base), { credentials: 'include' })
   if (!r.ok) throw new Error('get game status failed')
   return r.json()
 }
 
 // 新API: 发牌
 export async function deal(base = ''): Promise<{ roundId: string; faces: ('zhong'|'blank')[] }> {
-  const url = base ? `${base}/api/lottery/deal` : '/api/lottery/deal'
-  const r = await fetch(url, {
+  const r = await fetch(withBase('/api/lottery/deal', base), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include'
@@ -82,8 +87,7 @@ export async function deal(base = ''): Promise<{ roundId: string; faces: ('zhong
 
 // 新API: 选牌
 export async function pick(roundId: string, index: number, base = ''): Promise<{ win: boolean; face: 'zhong'|'blank'; faces: ('zhong'|'blank')[] }> {
-  const url = base ? `${base}/api/lottery/pick` : '/api/lottery/pick'
-  const r = await fetch(url, {
+  const r = await fetch(withBase('/api/lottery/pick', base), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -95,8 +99,7 @@ export async function pick(roundId: string, index: number, base = ''): Promise<{
 
 // 新API: 设置概率 (0-1)
 export async function setWinRate(winRate: number, base = ''): Promise<{ ok: boolean; winRate: number }> {
-  const url = base ? `${base}/api/lottery/config` : '/api/lottery/config'
-  const r = await fetch(url, {
+  const r = await fetch(withBase('/api/lottery/config', base), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -112,8 +115,7 @@ export async function getArrangement(base = '') {
 }
 
 export async function setGameState(state: 'waiting' | 'open' | 'closed', base = '') {
-  const url = base ? `${base}/api/admin/set-state` : '/api/admin/set-state'
-  const r = await fetch(url, {
+  const r = await fetch(withBase('/api/admin/set-state', base), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
