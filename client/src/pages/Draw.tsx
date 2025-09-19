@@ -275,7 +275,7 @@ export default function DrawPage(){
         <div className="cards-wrap" style={{ perspective: '1200px', WebkitPerspective: '1200px' }}>
           {cards.map(c=> (
               <button
-              key={c.id}
+                    key={c.id}
               className={`card tile ${c.state} ${pickedId===c.id ? 'picked' : ''}`}
               style={{
                 left:c.x,
@@ -324,7 +324,7 @@ export default function DrawPage(){
                   </div>
         <div className="dm-device-id-watermark">ID {shortId(cid)}</div>
         <div className="dm-cta-inline">
-          <button
+            <button
             className={`dm-btn watermark ${won ? 'winner' : ''}`}
             style={{maxWidth:'min(60vw,320px)'}}
             disabled={(!won) && (!canDraw || phase!=='idle')}
@@ -344,7 +344,7 @@ export default function DrawPage(){
             {status==='start'
               ? (phase==='idle' ? '开始抽奖' : (!canDraw || phase==='locked' ? (won ? '已中奖' : '已参与') : '请选择'))
               : (status==='pause' ? '活动暂停' : '活动已结束')}
-          </button>
+            </button>
         </div>
       </section>
       <section className="dm-rules glass bordered xhs">
@@ -357,10 +357,10 @@ export default function DrawPage(){
           <div className="xhs-item">
             <span className="tag tag-hot">抽中即送</span>
             <span className="text">🀄 翻中 <b className="h-key">红中</b> ，赢取限量托特包 🎁</span>
-          </div>
-        </div>
+              </div>
+            </div>
         <div className="footnote small">*由于环保袋数量有限，每日限量派送，敬请理解。</div>
-      </section>
+        </section>
       {result.open && (
         <div className="modal-mask" onClick={closeModal}>
           <div className="modal" onClick={e=>e.stopPropagation()}>
