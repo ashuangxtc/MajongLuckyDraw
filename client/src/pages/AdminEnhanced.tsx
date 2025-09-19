@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 // import { Slider } from "@/components/ui/slider"
 import AdminProbabilityControls from "@/components/AdminProbabilityControls"
-import { getParticipants, resetParticipant, resetAll } from '@shared/api'
 
 interface Participant {
   pid: number
@@ -41,12 +40,34 @@ export default function AdminEnhanced() {
   const [hongzhongPercent, setHongzhongPercent] = useState([33])
   const [showProbabilityPanel, setShowProbabilityPanel] = useState(false)
 
+  // Serverless API helpers（同域 /api/*）
+  const fetchParticipants = async () => {
+    const r = await fetch('/api/participants', { credentials: 'include' });
+    if (!r.ok) throw new Error('participants failed');
+    return r.json();
+  };
+  const apiResetParticipant = async (pid: number) => {
+    const r = await fetch('/api/participants/reset', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pid })
+    });
+    if (!r.ok) throw new Error('reset participant failed');
+    return r.json();
+  };
+  const apiResetAll = async () => {
+    const r = await fetch('/api/participants/reset-all', { method: 'POST', credentials: 'include' });
+    if (!r.ok) throw new Error('reset all failed');
+    return r.json();
+  };
+
   // 加载数据
   const loadData = async () => {
     setLoading(true)
     try {
       const [participantsRes, statusRes] = await Promise.all([
-        getParticipants(),
+        fetchParticipants(),
         fetch('/api/lottery/status', { credentials: 'include' }).then(r => r.json())
       ])
 
@@ -118,7 +139,7 @@ export default function AdminEnhanced() {
   // 重置单个参与者
   const resetOne = async (pid: number) => {
     try {
-      const result = await resetParticipant(pid)
+      const result = await apiResetParticipant(pid)
       console.log('重置结果:', result)
       await loadData()
       alert(`参与者 #${pid} 已重置`)
@@ -134,7 +155,7 @@ export default function AdminEnhanced() {
       return
     }
     try {
-      await resetAll()
+      await apiResetAll()
       await loadData()
     } catch (error) {
       console.error('重置所有参与者失败:', error)
