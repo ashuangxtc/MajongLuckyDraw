@@ -1,6 +1,14 @@
 {
-  "buildCommand": "cd client && npm install && npm run build",
-  "outputDirectory": "client/dist",
+  "builds": [
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "buildCommand": "npm run build",
+        "distDir": "dist"
+      }
+    }
+  ],
   "functions": {
     "client/api/admin.ts": {
       "runtime": "@vercel/node"
@@ -14,32 +22,12 @@
   },
   "rewrites": [
     {
-      "source": "/api/admin/(.*)",
-      "destination": "/client/api/admin"
-    },
-    {
-      "source": "/api/lottery/(.*)",
-      "destination": "/client/api/lottery"
-    },
-    {
-      "source": "/api/participants/(.*)",
-      "destination": "/client/api/participants"
-    },
-    {
-      "source": "/api/admin",
-      "destination": "/client/api/admin"
-    },
-    {
-      "source": "/api/lottery",
-      "destination": "/client/api/lottery"
-    },
-    {
-      "source": "/api/participants",
-      "destination": "/client/api/participants"
+      "source": "/api/(.*)",
+      "destination": "/client/api/$1"
     },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/client/dist/index.html"
     }
   ]
 }

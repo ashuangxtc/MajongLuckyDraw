@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { join, draw } from '@shared/api'
+import { join, draw } from '../shared/api'
 import MahjongTile from './MahjongTile'
 
 type Phase = 'ready' | 'reveal' | 'shuffle' | 'select' | 'result'

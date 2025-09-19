@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { join, draw } from "@shared/api";
+import { join, draw } from "../shared/api";
 import MahjongTile from "../components/MahjongTile";
 
 // 隐藏的后台入口：在目标区域 5 次点击触发
