@@ -307,7 +307,7 @@ export default function DrawPage(){
               <img
                 alt="back"
                 draggable={false}
-                style={{ position:'absolute', inset:0 as any, width:'100%', height:'100%', objectFit:'cover', borderRadius:18 as any,
+                style={{ position:'absolute', inset:0 as any, width:'100%', height:'100%', objectFit:'contain', borderRadius:18 as any,
                   backfaceVisibility:'visible' as any, WebkitBackfaceVisibility:'visible' as any,
                   transform:'rotateY(0deg) translateZ(0.01px)',
                   opacity: c.flipped ? 0 : 1, zIndex:1 as any }}

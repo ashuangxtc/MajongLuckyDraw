@@ -234,7 +234,7 @@ body {
 
   /* Participant page background */
   .dm-root{
-    background: url('/images/mahjong/background/dreammore-bg.jpg') center/cover no-repeat fixed;
+    background: #f7f7fb url('/images/mahjong/background/dreammore-bg.jpg') center/cover no-repeat fixed;
     min-height: 100dvh;
   }
 }
