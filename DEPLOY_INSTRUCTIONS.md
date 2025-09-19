@@ -44,6 +44,10 @@ MajongLuckyDraw/
 - 输出目录：`client/dist`
 - API 函数：`client/api/`
 
+### 构建失败排查（Rollup 原生依赖）
+- 现象：`Cannot find module @rollup/rollup-linux-x64-gnu`
+- 处理：已在 `client/package.json` 固定 `rollup` 与 `@rollup/rollup-linux-x64-gnu` 版本，并在 `vercel.json` 注入 `ROLLUP_SKIP_NODEJS_NATIVE=true`，避免 npm 可选依赖解析问题。
+
 ## 🔧 已修复的问题
 - ✅ Node.js 版本升级到 22.x
 - ✅ 清理了不必要的后端依赖

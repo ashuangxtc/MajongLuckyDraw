@@ -1,4 +1,9 @@
 {
+  "build": {
+    "env": {
+      "ROLLUP_SKIP_NODEJS_NATIVE": "true"
+    }
+  },
   "builds": [
     {
       "src": "client/package.json",
