@@ -9,8 +9,10 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const password = String(body?.password || '');
-    const expected = String(process.env.ADMIN_PASSWORD || 'Dreammore123');
+    // 兼容字段名 password / pwd
+    const password = String((body?.password ?? body?.pwd ?? '')).trim();
+    // 兼容环境变量 ADMIN_PASSWORD / ADMIN_PWD
+    const expected = String((process.env.ADMIN_PASSWORD || process.env.ADMIN_PWD || 'Dreammore123')).trim();
 
     if (password !== expected) {
       return res.status(401).json({ ok: false, error: 'INVALID_PASSWORD' });
